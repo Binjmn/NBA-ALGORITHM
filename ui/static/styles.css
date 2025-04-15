@@ -1,0 +1,275 @@
+/* NBA Prediction System Dashboard Styles */
+/* Production-ready CSS with responsive design */
+
+:root {
+    --primary-color: #1a56db;
+    --secondary-color: #2563eb;
+    --accent-color: #8b5cf6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --text-color: #1f2937;
+    --light-text: #4b5563;
+    --lighter-text: #9ca3af;
+    --background-color: #f5f7fa;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+header {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    padding: 2rem 0;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+footer {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1.5rem 0;
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Status styles */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.status-label {
+    font-weight: 500;
+    color: var(--light-text);
+}
+
+.status-value {
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+}
+
+.status-online {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.status-offline {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.status-checking {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--warning-color);
+}
+
+/* Table styles */
+.table-container {
+    padding: 0 1.5rem 1.5rem;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+table th {
+    background-color: rgba(37, 99, 235, 0.05);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+table td {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+table tr:hover td {
+    background-color: rgba(37, 99, 235, 0.02);
+}
+
+.loading-message {
+    text-align: center;
+    color: var(--lighter-text);
+    padding: 2rem 0;
+    font-style: italic;
+}
+
+/* Performance metrics */
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 0;
+}
+
+@media (max-width: 768px) {
+    .performance-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.metric {
+    text-align: center;
+    padding: 1rem;
+    background-color: rgba(37, 99, 235, 0.05);
+    border-radius: 0.5rem;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: var(--light-text);
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* Chart container */
+.chart-container {
+    padding: 1.5rem;
+    height: 250px;
+}
+
+/* Model info */
+.model-info-container {
+    padding: 1.5rem;
+}
+
+.model-info-loading {
+    text-align: center;
+    color: var(--lighter-text);
+    padding: 3rem 0;
+    font-style: italic;
+}
+
+.model-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.model-info-item {
+    background-color: rgba(37, 99, 235, 0.05);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.model-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.model-details {
+    font-size: 0.9rem;
+    color: var(--light-text);
+}
+
+.model-details p {
+    margin-bottom: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: var(--secondary-color);
+}
+
+.center-button {
+    text-align: center;
+    padding: 0 1.5rem 1.5rem;
+}

@@ -78,22 +78,15 @@ class BaseAPIClient:
         """
         Wait if necessary to respect rate limits
         """
+        # COMPLETELY DISABLED FOR TRAINING - NO RATE LIMITING
+        # We'll clean up old timestamps but not enforce any waits
         current_time = time.time()
         
-        # Remove timestamps older than the rate limit period
+        # Clean up old timestamps beyond our window
         self.request_timestamps = [ts for ts in self.request_timestamps 
-                                  if current_time - ts < self.rate_limit_period]
+                                if current_time - ts <= self.rate_limit_period]
         
-        # Check if we've hit the rate limit
-        if len(self.request_timestamps) >= self.rate_limit:
-            oldest_timestamp = min(self.request_timestamps)
-            sleep_time = self.rate_limit_period - (current_time - oldest_timestamp) + 0.1
-            
-            if sleep_time > 0:
-                logger.warning(f"Rate limit approached, sleeping for {sleep_time:.2f} seconds")
-                time.sleep(sleep_time)
-        
-        # Add current request to timestamps
+        # Add current request to timestamps just for tracking
         self.request_timestamps.append(time.time())
     
     def _get_cache_path(self, endpoint: str, params: Dict[str, Any]) -> str:

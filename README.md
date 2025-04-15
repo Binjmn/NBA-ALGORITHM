@@ -10,16 +10,40 @@ This project follows a modular and minimal architecture:
   - `api/` - API client implementations
     - `balldontlie_client.py` - BallDontLie API client
     - `theodds_client.py` - The Odds API client
+    - `server.py` - API server module
+    - `direct_data_access.py` - Direct API data access without database dependency
+    - `model_predictions.py` - Connects trained models to API endpoints
+  - `database/` - Database models and connection management
+    - `connection.py` - PostgreSQL connection pool management
+    - `robust_connection.py` - Enhanced connection manager with pooling and retry logic
+    - `models.py` - Database models (Game, Player, ModelWeight, ModelPerformance)
+    - `init_db.py` - Database initialization script
   - `utils/` - Utility functions and classes
   - `models/` - Prediction models
+    - `base_model.py` - Base model interface for all prediction models
+    - `random_forest_model.py` - Random Forest classifier for moneyline predictions
+    - `gradient_boosting_model.py` - Gradient Boosting regressor for spread predictions
+    - `bayesian_model.py` - Bayesian model for probabilistic predictions
+    - `ensemble_model.py` - Stacking ensemble that combines multiple models
+    - `training_pipeline.py` - End-to-end training system for all models
+    - `model_deployer.py` - Production deployment system for trained models
   - `data/` - Data processing and feature engineering
+    - `historical_collector.py` - Collects historical NBA data from APIs
+    - `feature_engineering.py` - Creates features for model training
   - `examples/` - Example scripts demonstrating usage
 - `data/` - Data storage
   - `api_cache/` - Cache for API responses
   - `processed/` - Processed data ready for model training
+  - `models/` - Trained model files
+  - `historical/` - Historical NBA data
+  - `features/` - Engineered features
+  - `production_models/` - Production-ready deployed models
 - `logs/` - Application logs
 - `docs/` - Documentation
-  - `architecture/` - Detailed architecture documentation
+  - `architecture.md` - Detailed architecture documentation
+  - `api_server_guide.md` - API server documentation
+  - `api_setup_guide.md` - API setup guide
+  - `docker_guide.md` - Docker deployment guide
 - `config/` - Configuration files
   - `api_keys.py` - API key configuration (not committed to git)
   - `api_keys.py.sample` - Sample API key configuration template
@@ -39,6 +63,85 @@ This project adheres to specific rules and guidelines documented in [PROJECT_RUL
 ## Usage
 The system runs automatically on scheduled intervals. No manual execution is required.
 
+### Database Integration
+
+The NBA Prediction System uses PostgreSQL to store and manage data for long-term operation:
+
+### Database Setup
+
+The system includes a production database setup script that populates your database with real NBA data:
+
+```bash
+# Set up the database with real NBA data from APIs
+python -m src.database.setup_production_db
+```
+
+This script will:
+1. Create all necessary database tables and indexes
+2. Fetch real teams, players and games from the BallDontLie API
+3. Configure model templates for training
+
+### Advanced Model Training
+
+The system now includes an advanced model training pipeline that uses real NBA data:
+
+```bash
+# Train all prediction models with real NBA data
+python -m src.models.training_pipeline
+```
+
+Features:
+- Fetches historical game data from BallDontLie and The Odds APIs
+- Performs comprehensive feature engineering on real NBA statistics
+- Trains multiple model types:
+  - Random Forest Classifier for moneyline (win/loss) predictions
+  - Gradient Boosting Regressor for spread predictions
+  - Bayesian Model for probabilistic predictions
+  - Ensemble Stacking Model for optimal combined predictions
+- Cross-validation and hyperparameter optimization for all models
+- Evaluates model performance with proper validation
+- Saves trained models with version control
+
+### Model Deployment
+
+To deploy trained models to production for use in the API:
+
+```bash
+# Deploy trained models to production
+python -m src.models.model_deployer --deploy --model ensemble --target moneyline
+```
+
+Features:
+- Manages model versions and deployment
+- Supports rollback to previous model versions
+- Tracks model performance metrics
+- Enables multiple models for different prediction targets
+
+### Database Models
+- **Games** - Stores game information, odds, features, and predictions
+- **Players** - Stores player information, statistics, and performance predictions
+- **ModelWeights** - Stores trained model weights and parameters with version control
+- **ModelPerformance** - Tracks model accuracy and performance metrics over time
+
+#### Database Setup
+
+1. Ensure PostgreSQL (version 12 or higher) is installed
+2. Create a new database named `nba_prediction`:
+   ```sql
+   CREATE DATABASE nba_prediction;
+   ```
+3. Run the database initialization script:
+   ```bash
+   python -m src.database.init_db --verbose
+   ```
+
+The database connection is configured through environment variables:
+- `POSTGRES_HOST` - Database host (default: localhost)
+- `POSTGRES_PORT` - Database port (default: 5432)
+- `POSTGRES_DB` - Database name (default: nba_prediction)
+- `POSTGRES_USER` - Database username (default: postgres)
+- `POSTGRES_PASSWORD` - Database password (default: postgres)
+
 ### API Components
 
 #### BallDontLie API Client
@@ -47,7 +150,6 @@ We use the BallDontLie API (GOAT plan) to access comprehensive NBA data:
 - Game schedules, results, and statistics
 - Player and team season averages
 - Advanced statistics and metrics
-- Betting odds for games
 
 Example usage:
 ```python
@@ -58,15 +160,13 @@ client = BallDontLieClient()
 
 # Get today's games
 todays_games = client.get_todays_games()
-
-# Get odds for today's games
-todays_odds = client.get_todays_odds()
 ```
 
 #### The Odds API Client
 We use The Odds API to access comprehensive sports betting odds and live scores data:
 - Betting odds for games
 - Live scores for games
+- Historical odds data
 
 Example usage:
 ```python
@@ -80,121 +180,142 @@ nba_available = client.is_nba_available()
 
 # Get today's NBA odds
 odds = client.get_todays_odds()
-
-# Get live scores
-scores = client.get_live_scores()
 ```
 
-#### NBA Data Processor
-The data processor provides higher-level functions to organize and process data from the API:
-- Team and player data retrieval and caching
-- Comprehensive game statistics collection
-- Season statistics for teams and players
-- Today's games with odds and team information
+#### Direct Data Access
+The system provides direct API access functionality that doesn't rely on database connectivity:
 
-Example usage:
 ```python
-from src.utils.data_processor import NBADataProcessor
+from src.api.direct_data_access import DirectDataAccess
 
-# Initialize processor
-processor = NBADataProcessor()
+# Initialize the direct data access
+data_access = DirectDataAccess()
 
-# Get today's games with comprehensive data
-todays_games = processor.get_todays_games_with_data()
-
-# Save processed data
-processor.save_processed_data(todays_games, "games_today")
+# Get upcoming NBA games
+upcoming_games = data_access.get_upcoming_games(days=7)
 ```
 
-### Scheduling
-- Model training and first predictions: 6:00 AM EST daily
-- Model performance summary: 2:00 AM EST daily
-- Data updates: Every 4 hours (10:00 AM, 2:00 PM, 6:00 PM EST)
-- Live game data: Every 10 minutes during active games
-- News/injury updates: Every 15 minutes in 2-hour pre-game windows
+### API Integration
 
-## Models
-The system uses multiple models for predictions:
-1. Random Forests
-2. Combined (XGBoost + LightGBM)
-3. Bayesian
-4. Anomaly Detection
-5. Model Mixing
-6. Ensemble Stacking
+The system provides a comprehensive REST API for monitoring and controlling the prediction models through the `src/api/server.py` module:
 
-## Predictions
-Predictions are generated for the current day's games only, including:
-- Game outcomes (moneyline, spread, totals)
-- Player stats (points, rebounds, assists, threes)
-- Bankroll recommendations
-- CLV analysis
+#### Training Control Endpoints
 
-## Performance Tracking
-Model performance is tracked daily and stored in the database. A summary is generated daily at 2:00 AM EST.
+- `GET /api/health` - Health check endpoint to verify API is operational
+- `POST /api/training/start` - Start model training (requires authentication)
+- `GET /api/training/status` - Check current training status
+- `POST /api/training/cancel` - Cancel ongoing training (requires authentication)
 
-## Maintenance
-The system is designed for long-term operation with minimal maintenance. It automatically adapts to new NBA seasons and retrains models when performance drops below thresholds.
+#### Model Management Endpoints
 
-## Documentation
-Detailed documentation is available in the `docs/` directory, including:
-- [Architecture details](architecture.md)
-- [Data flow diagrams](docs/architecture/data_flow.md)
-- [Model designs](docs/architecture/model_design.md)
-- [API integrations](docs/architecture/api_integration.md)
+- `GET /api/models/list` - List all available models
+- `GET /api/models/{model_name}/details` - Get detailed information about a specific model
+- `POST /api/models/{model_name}/retrain` - Trigger retraining for a specific model (requires authentication)
 
-## Examples
-Example scripts are provided in the `src/examples/` directory:
-- `balldontlie_example.py` - Demonstrates how to use the BallDontLie API client and data processor
-- `theodds_example.py` - Demonstrates how to use The Odds API client
+#### Performance Monitoring Endpoints
 
-To run an example:
+- `GET /api/models/performance` - Get performance metrics for all models
+- `GET /api/models/drift` - Check for model drift and see which models need retraining
+
+#### Prediction Endpoints
+
+- `GET /api/predictions/today` - Get predictions for today's games
+- `GET /api/predictions/upcoming` - Get predictions for upcoming games
+- `GET /api/predictions/recent` - Get recent predictions and their outcomes
+
+To run the API server:
+
 ```bash
-python -m src.examples.balldontlie_example
-python -m src.examples.theodds_example
+python -m src.api.server
 ```
+
+### Feature Engineering
+
+The system includes a robust feature engineering pipeline that transforms raw NBA data into features suitable for machine learning models:
+
+```python
+from src.data.feature_engineering import NBAFeatureEngineer
+
+# Initialize feature engineer
+engineer = NBAFeatureEngineer()
+
+# Load games data
+games_df = engineer.load_games()
+
+# Generate features for all games
+features = engineer.generate_features_for_all_games(games_df)
+
+# Prepare training data
+X_train, y_train = engineer.prepare_training_data(features, target='home_win')
+```
+
+Features generated include:
+- Team performance metrics (recent form, scoring trends, etc.)
+- Head-to-head history between teams
+- Rest days and travel impact
+- Home court advantage effects
+- Comprehensive comparative metrics
+
+### Performance Tracking
+
+The system tracks prediction performance to evaluate model accuracy over time using the `src/utils/performance_tracker.py` module.
+
+To run performance tracking manually or generate a summary:
+```bash
+python -m src.utils.track_performance [--summary] [--days DAYS]
+```
+
+## Troubleshooting
+
+### Database Connectivity Issues
+If you experience database connectivity problems:
+
+1. Verify PostgreSQL is running:
+   ```bash
+   # On Linux/Mac
+   pg_isready
+   
+   # On Windows
+   pg_isready -U postgres
+   ```
+
+2. Check connection parameters in environment variables or `.env` file
+3. The system includes a robust connection manager that handles connection errors and retries
+
+### API Rate Limits
+The system is designed to respect API rate limits, but you may encounter issues if running multiple instances or making frequent manual requests.
+
+1. BallDontLie API: 1000 requests per day (standard plan)
+2. The Odds API: 500 requests per month (standard plan)
+
+The system implements caching to minimize API calls. Check the logs for rate limit warnings.
+
+## Acknowledgements
+- [BallDontLie API](https://www.balldontlie.io/) for NBA data
+- [The Odds API](https://the-odds-api.com/) for betting data
 
 ## Changelog
 
-### Version 1.0.1 (2025-04-14)
-- Added BallDontLie API client implementation
-- Created data processor for organizing and processing NBA data
-- Added example script for demonstrating API usage
-- Updated documentation with API usage instructions
-
 ### Version 1.0.0 (2025-04-14)
-- Initial project setup
+- Full production implementation with real-time API data
+- Four advanced prediction models with ensemble stacking
+- Robust feature engineering pipeline
+- Comprehensive training and deployment system
+- Enhanced API endpoints for predictions
 
 ### Version 0.2.0 (2025-04-14)
 - Added The Odds API integration for comprehensive betting odds data
+- Implemented robust database connection manager
+- Added direct API data access for improved reliability
+
+### Version 0.1.0 (2025-04-01)
+- Initial release with basic prediction functionality
+- PostgreSQL database integration
+- BallDontLie API integration
 
 ## NBA Season Management
 
-The system includes a robust season management component that:
-
-- Automatically detects the current NBA season and phase
-- Handles transitions between seasons
-- Maintains season-specific data in organized directories
-- Validates season data with the BallDontLie API
-
-```python
-from src.utils.season_manager import SeasonManager
-from config.season_config import SeasonPhase
-
-# Create a season manager
-season_manager = SeasonManager()
-
-# Get current season information
-season_year = season_manager.get_current_season_year()
-season_display = season_manager.get_current_season_display()
-current_phase = season_manager.get_current_phase()
-
-# Check if we're in an active season
-is_in_season = season_manager.is_in_season()
-
-# Get days until next phase
-days_till_playoffs = season_manager.days_until_phase(SeasonPhase.PLAYOFFS)
-```
+The system automatically detects NBA seasons and handles the transition between seasons, including preseason, regular season, and playoffs. This ensures continuous operation without manual intervention.
 
 ## License
-
-Proprietary - All rights reserved
+This project is licensed under the terms of the MIT license.

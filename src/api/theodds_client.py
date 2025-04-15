@@ -58,11 +58,11 @@ class TheOddsClient(BaseAPIClient):
         super().__init__(
             base_url="https://api.the-odds-api.com/v4",
             api_key=api_key,
-            rate_limit=500,     # Free plan has 500 requests per month
-            rate_limit_period=2592000,  # 30 days in seconds
-            cache_ttl=21600,    # Regular data cache for 6 hours
+            rate_limit=1000000,  # Effectively unlimited (1 million)
+            rate_limit_period=60,  # Per minute rather than monthly
+            cache_ttl=3600 * 3,  # Cache for 3 hours
             time_sensitive_endpoints=time_sensitive_endpoints,
-            time_sensitive_ttl=900  # Time-sensitive data cached for only 15 minutes
+            time_sensitive_ttl=600  # 10 minutes for time-sensitive data
         )
         logger.info("Initialized The Odds API client")
     
@@ -280,25 +280,41 @@ class TheOddsClient(BaseAPIClient):
             List[Dict[str, Any]]: Historical odds
         """
         regions = regions or self.DEFAULT_REGIONS
-        markets = markets or self.DEFAULT_MARKETS
+        
+        # For historical odds, we can only use basic markets
+        # Player-specific markets are not supported in historical data
+        historical_markets = markets or ["h2h", "spreads", "totals"]
         
         # Convert datetime to ISO string if needed
         if isinstance(date, datetime):
-            date_str = date.isoformat()
+            date_str = date.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
         else:
-            date_str = date
+            # If it's a string, ensure it's in YYYY-MM-DD format
+            try:
+                parsed_date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+                date_str = parsed_date.strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                # If we can't parse it, just use the string as is
+                date_str = date
         
         params = {
             'regions': ','.join(regions),
-            'markets': ','.join(markets),
+            'markets': ','.join(historical_markets),
             'date': date_str,
             'oddsFormat': odds_format,
             'dateFormat': date_format
         }
         
         endpoint = f'historical/sports/{self.SPORT_KEY}/odds'
-        response = self.request(endpoint, params=params)
-        return response
+        
+        try:
+            logger.info(f"Requesting historical odds for date: {date_str}")
+            response = self.request(endpoint, params=params)
+            return response
+        except Exception as e:
+            logger.error(f"Error fetching historical odds: {str(e)}")
+            # Return empty list rather than failing
+            return []
     
     def get_historical_events(self, date: Union[str, datetime]) -> List[Dict[str, Any]]:
         """

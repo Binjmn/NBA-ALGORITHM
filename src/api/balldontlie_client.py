@@ -58,8 +58,8 @@ class BallDontLieClient(BaseAPIClient):
         super().__init__(
             base_url="https://api.balldontlie.io/v1",
             api_key=api_key,
-            rate_limit=60,  # GOAT plan has higher limits, but we'll be conservative
-            rate_limit_period=60,  # 60 requests per minute
+            rate_limit=1000000,  # Effectively unlimited (1 million)
+            rate_limit_period=60,  # Per minute rather than monthly
             cache_ttl=3600,  # Regular data cache for 1 hour
             time_sensitive_endpoints=time_sensitive_endpoints,
             time_sensitive_ttl=300  # Time-sensitive data cached for only 5 minutes

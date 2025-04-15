@@ -1,0 +1,29 @@
+# NBA Prediction System Cron Jobs
+
+# Update bash environment
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Set environment variables
+RUNTIME_ENVIRONMENT=docker
+
+# Daily model training - 6:00 AM EST
+0 6 * * * cd /app && python -m src.utils.auto_train_manager --force >> /app/logs/training.log 2>&1
+
+# Daily performance tracking - 2:00 AM EST
+0 2 * * * cd /app && python -m src.utils.track_performance >> /app/logs/performance.log 2>&1
+
+# Check for model drift - every 6 hours
+0 */6 * * * cd /app && python -m src.utils.check_model_drift >> /app/logs/drift.log 2>&1
+
+# Update odds data - every 4 hours
+0 */4 * * * cd /app && python -m src.data.data_collector --odds_only >> /app/logs/data.log 2>&1
+
+# Live game updates - every 10 minutes during typical game hours (6 PM - 1 AM EST)
+*/10 18-23,0-1 * * * cd /app && python -m src.data.data_collector --live_only >> /app/logs/live.log 2>&1
+
+# Update injury reports - every 15 minutes during pre-game windows
+*/15 15-19 * * * cd /app && python -m src.data.data_collector --injuries_only >> /app/logs/injuries.log 2>&1
+
+# Cleanup old logs - once per week
+0 3 * * 0 find /app/logs -type f -name "*.log" -mtime +14 -delete

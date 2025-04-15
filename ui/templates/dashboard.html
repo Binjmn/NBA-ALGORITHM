@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Prediction System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <div class="dashboard-container">
+            <h1>NBA Prediction System</h1>
+            <p>Real-time NBA prediction and analysis dashboard</p>
+        </div>
+    </header>
+    
+    <div class="dashboard-container">
+        <div class="card">
+            <div class="card-title">System Status</div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span class="status-label">API Status:</span>
+                    <span id="api-status" class="status-value status-offline">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Database Status:</span>
+                    <span id="db-status" class="status-value status-checking">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">BallDontLie API:</span>
+                    <span id="balldontlie-status" class="status-value status-checking">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">The Odds API:</span>
+                    <span id="odds-status" class="status-value status-checking">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Models Trained:</span>
+                    <span id="models-trained" class="status-value">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Update:</span>
+                    <span id="last-update" class="status-value">Checking...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid-container">
+            <div class="card">
+                <div class="card-title">Upcoming Games</div>
+                <div class="table-container" id="upcoming-games-container">
+                    <table id="upcoming-games-table">
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Date</th>
+                                <th>Prediction</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="upcoming-games-body">
+                            <tr>
+                                <td colspan="4" class="loading-message">Loading upcoming games...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Recent Predictions</div>
+                <div class="table-container" id="recent-predictions-container">
+                    <table id="recent-predictions-table">
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Date</th>
+                                <th>Prediction</th>
+                                <th>Confidence</th>
+                                <th>Actual Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-predictions-body">
+                            <tr>
+                                <td colspan="5" class="loading-message">Loading recent predictions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid-container">
+            <div class="card">
+                <div class="card-title">Model Performance</div>
+                <div class="performance-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Overall Accuracy</div>
+                        <div class="metric-value" id="overall-accuracy">--</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Last 7 Days</div>
+                        <div class="metric-value" id="recent-accuracy">--</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Moneyline Accuracy</div>
+                        <div class="metric-value" id="moneyline-accuracy">--</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Spread Accuracy</div>
+                        <div class="metric-value" id="spread-accuracy">--</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performance-chart"></canvas>
+                </div>
+                <div class="center-button">
+                    <button class="btn" id="view-details-btn">View Detailed Performance</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Model Information</div>
+                <div class="model-info-container" id="model-info">
+                    <div class="model-info-loading">Loading model information...</div>
+                </div>
+                <div class="center-button">
+                    <button class="btn" id="retrain-btn">Trigger Model Retraining</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="dashboard-container">
+            <p>NBA Prediction System &copy; 2025 | Using Real NBA Data</p>
+        </div>
+    </footer>
+    
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
