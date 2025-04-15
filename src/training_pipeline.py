@@ -59,7 +59,10 @@ from src.models.bayesian_model import BayesianModel
 from src.models.ensemble_model import EnsembleModel
 from src.models.combined_gradient_boosting import CombinedGradientBoostingModel
 from src.models.ensemble_stacking import EnsembleStackingModel
+# Import SeasonManager for automatic season detection
+from src.utils.season_manager import SeasonManager
 
+# ... (rest of the code remains the same)
 
 def setup_database():
     """
@@ -526,6 +529,17 @@ def run_training_pipeline(args: argparse.Namespace) -> bool:
     logger.info("Starting NBA prediction training pipeline")
     logger.info(f"Arguments: {args}")
     
+    # Auto-detect current NBA season if not explicitly specified
+    if args.auto_detect_season:
+        # Initialize SeasonManager to auto-detect the current season
+        season_manager = SeasonManager()
+        current_season = str(season_manager.get_current_season_year())
+        if current_season != args.season:
+            logger.info(f"Auto-detected current NBA season: {current_season} (was set to {args.season})")
+            args.season = current_season
+    else:
+        logger.info(f"Using specified NBA season: {args.season}")
+    
     # Initialize the database
     if not args.skip_database:
         db_success = setup_database()
@@ -539,6 +553,16 @@ def run_training_pipeline(args: argparse.Namespace) -> bool:
         if feature_path.exists():
             logger.info(f"Forcing collection: Removing existing feature file {feature_path}")
             feature_path.unlink()
+    
+    # Collect historical data for the detected/specified season
+    if not args.skip_collection:
+        collection_success = collect_historical_data(
+            season=args.season,
+            force=args.force_collection
+        )
+        if not collection_success:
+            logger.error("Historical data collection failed, stopping pipeline")
+            return False
     
     # Load features data with enhanced engineering
     feature_data = load_feature_data(use_enhanced_features=args.use_enhanced_features)
@@ -572,6 +596,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="NBA Prediction Training Pipeline")
     parser.add_argument("--season", type=str, default="2025", help="Season to train on (e.g., '2025')")
+    parser.add_argument("--auto-detect-season", action="store_true", help="Automatically detect current NBA season (overrides --season)")
     parser.add_argument("--force-collection", action="store_true", help="Force data collection even if data exists")
     parser.add_argument("--skip-collection", action="store_true", help="Skip data collection entirely")
     parser.add_argument("--skip-database", action="store_true", help="Skip database setup")
@@ -583,6 +608,10 @@ def main():
     parser.add_argument("--models", type=str, nargs="+", help="Specific models to train")
     
     args = parser.parse_args()
+    
+    # Set auto-detect as default behavior unless specifically set to false
+    if '--no-auto-detect-season' not in sys.argv:
+        args.auto_detect_season = True
     
     if args.force_collection and args.skip_collection:
         parser.error("--force-collection and --skip-collection cannot be used together")

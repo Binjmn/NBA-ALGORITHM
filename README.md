@@ -229,6 +229,22 @@ To run the API server:
 python -m src.api.server
 ```
 
+### Key Components
+
+### Automatic Season Detection
+- **Season Manager**: Sophisticated season detection system that automatically identifies the current NBA season
+- **Future-Proof Design**: Training pipeline automatically adapts to season transitions without manual updates
+- **SeasonPhase Detection**: Identifies current phase (preseason, regular season, playoffs, etc.)
+- **Season Transition Handling**: Manages data archiving and initialization during season transitions
+- **Command-Line Override**: Allows manual season specification when needed, but defaults to auto-detection
+
+### Model Training Pipeline
+- **Modular Design**: Allows for easy addition of new models and training algorithms
+- **Real Data Integration**: Trains models using real NBA data from BallDontLie and The Odds APIs
+- **Comprehensive Feature Engineering**: Generates features for model training using real NBA statistics
+- **Cross-Validation and Hyperparameter Tuning**: Optimizes model performance with proper validation
+- **Model Versioning and Deployment**: Manages model versions and deployment for production use
+
 ### Feature Engineering
 
 The system includes a robust feature engineering pipeline that transforms raw NBA data into features suitable for machine learning models:

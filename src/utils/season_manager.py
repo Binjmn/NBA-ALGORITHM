@@ -99,7 +99,7 @@ class SeasonManager:
         season_year = get_season_year_from_date(reference_date)
         
         # Determine current phase
-        phase, start_date, end_date = self.get_current_phase(reference_date)
+        phase, start_date, end_date = self.determine_phase_for_date(reference_date)
         
         # Update current season information
         self._current_season_year = season_year
@@ -114,9 +114,9 @@ class SeasonManager:
         if self.use_api_validation and self.api_client is not None:
             self._validate_season_with_api()
     
-    def get_current_phase(self, reference_date: datetime) -> Tuple[SeasonPhase, datetime, datetime]:
+    def determine_phase_for_date(self, reference_date: datetime) -> Tuple[SeasonPhase, datetime, datetime]:
         """
-        Determine the current NBA season phase based on the given date
+        Determine the NBA season phase based on the given date
         
         Args:
             reference_date (datetime): Reference date
