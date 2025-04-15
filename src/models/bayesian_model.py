@@ -106,12 +106,22 @@ class BayesianModel(BaseModel):
                 
                 # Use bagging with the Naive Bayes classifier for more stability
                 if self.params.get('use_bagging', True):
-                    self.model = BaggingClassifier(
-                        base_estimator=base_model,
-                        n_estimators=self.params['n_estimators'],
-                        max_samples=self.params['max_samples'],
-                        random_state=self.params['random_state']
-                    )
+                    # In scikit-learn 1.0+, base_estimator must be passed as estimator
+                    try:
+                        self.model = BaggingClassifier(
+                            estimator=base_model,  # Updated parameter name
+                            n_estimators=self.params['n_estimators'],
+                            max_samples=self.params['max_samples'],
+                            random_state=self.params['random_state']
+                        )
+                    except TypeError:
+                        # Fallback for older versions that use base_estimator
+                        self.model = BaggingClassifier(
+                            base_estimator=base_model,
+                            n_estimators=self.params['n_estimators'],
+                            max_samples=self.params['max_samples'],
+                            random_state=self.params['random_state']
+                        )
                 else:
                     self.model = base_model
             else:  # 'regression'

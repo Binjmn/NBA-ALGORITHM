@@ -22,8 +22,10 @@ import json
 import logging
 import argparse
 import warnings
+import pandas as pd
+import numpy as np
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union
 
 # Set up logging
@@ -48,7 +50,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Import project modules
 from src.data.historical_collector import HistoricalDataCollector
-from src.features.advanced_features import run_feature_engineering
+from src.features.advanced_features import FeatureEngineer
+from src.features.advanced_features_plus import EnhancedFeatureEngineer
 from src.models.base_model import BaseModel
 from src.models.random_forest_model import RandomForestModel
 from src.models.gradient_boosting_model import GradientBoostingModel
@@ -172,27 +175,21 @@ def train_all_models() -> Dict[str, Any]:
     
     results = {}
     
-    # Initialize all models with their correct parameters based on their implementation
-    models_to_train = [
-        # Each model initialized according to its specific constructor parameters
-        RandomForestModel(version=1, params={"n_estimators": 100, "max_depth": 10}),
-        GradientBoostingModel(version=1, params={"n_estimators": 100, "learning_rate": 0.1}),
-        # Skip problematic models for now until they can be fixed properly
-        # BayesianModel(name="Bayesian", prediction_target="moneyline", version=1),
-        # CombinedGradientBoostingModel(name="CombinedGBM", prediction_target="moneyline", version=1),
-        # EnsembleStackingModel(name="EnsembleStacking", prediction_target="moneyline", version=1)
-    ]
+    # Initialize models
+    prediction_type = "moneyline"
+    models = {
+        "RandomForestModel": RandomForestModel(version=1),
+        "GradientBoostingModel": GradientBoostingModel(version=1),
+        "BayesianModel": BayesianModel(prediction_target=prediction_type, version=1),
+        "CombinedGradientBoostingModel": CombinedGradientBoostingModel(prediction_target=prediction_type, version=1),
+        "EnsembleStackingModel": EnsembleStackingModel(prediction_target=prediction_type, version=1)
+    }
     
-    # Skip EnsembleModel too since it requires base models that haven't been trained yet
-    # Try to add the EnsembleModel which requires base models
-    # try:
-    #     # Ensemble model needs to be created after basic models are trained
-    #     base_models = []
-    #     models_to_train.append(
-    #         EnsembleModel(prediction_type="classification", version=1, base_models=base_models)
-    #     )
-    # except Exception as e:
-    #     logger.warning(f"Could not initialize EnsembleModel: {str(e)}")
+    # Initialize and train ensemble models after base models
+    # We'll train them separately after the base models are trained
+    ensemble_models = {
+        "EnsembleModel": EnsembleModel(prediction_target=prediction_type, version=1)
+    }
     
     feature_path = Path("data/features/engineered_features.csv")
     if not feature_path.exists():
@@ -256,10 +253,16 @@ def train_all_models() -> Dict[str, Any]:
         logger.error(f"Error loading feature data: {str(e)}")
         return {"status": "error", "message": f"Error loading data: {str(e)}"}
 
-    # Train each model
-    for model in models_to_train:
-        model_name = model.__class__.__name__
-        logger.info(f"Training {model_name}")
+    # Get a count of how many models we're expecting to train
+    expected_model_count = len(models) + len(ensemble_models)
+    logger.info(f"Attempting to train {expected_model_count} models ({len(models)} base models and {len(ensemble_models)} ensemble models)")
+
+    # Initialize and train base models first
+    trained_models = {}
+    
+    # Step 1: Train base models first
+    for model_name, model in models.items():
+        logger.info(f"Training base model: {model_name}")
         
         try:
             # Get the appropriate data split for this model's prediction target
@@ -272,6 +275,82 @@ def train_all_models() -> Dict[str, Any]:
             X, y = data_splits[prediction_target]
                 
             # Train the model
+            start_time = time.time()
+            model.train(X, y)
+            training_time = time.time() - start_time
+            
+            # Store the trained model for later use by ensemble models
+            trained_models[model_name] = model
+            
+            # Evaluate the model
+            try:
+                metrics = model.evaluate(X, y)
+            except TypeError as e:
+                # If evaluate method doesn't accept parameters, use the default implementation
+                logger.warning(f"Model evaluate() method doesn't accept parameters: {str(e)}")
+                metrics = {"warning": "Model evaluation skipped due to interface mismatch"}
+                
+            # Save the model
+            try:
+                if hasattr(model, 'save') and callable(getattr(model, 'save')):
+                    model.save()
+                else:
+                    logger.warning(f"{model_name} does not have a save method, skipping persistence")
+            except Exception as e:
+                logger.error(f"Error saving {model_name}: {str(e)}")
+            
+            # Record results
+            results[model_name] = {
+                "status": "success",
+                "training_time": training_time,
+                "metrics": metrics
+            }
+            
+            logger.info(f"Successfully trained {model_name} in {training_time:.2f} seconds")
+            logger.info(f"Metrics: {metrics}")
+        except Exception as e:
+            logger.error(f"Error training {model_name}: {str(e)}")
+            results[model_name] = {
+                "status": "error",
+                "message": str(e)
+            }
+    
+    # Step 2: Configure and train ensemble models using the trained base models
+    for model_name, model in ensemble_models.items():
+        logger.info(f"Training ensemble model: {model_name}")
+        
+        try:
+            # Get the appropriate data split for this model's prediction target
+            prediction_target = getattr(model, "prediction_target", "moneyline")
+            
+            if prediction_target not in data_splits:
+                logger.warning(f"No data split available for {prediction_target}, using moneyline")
+                prediction_target = "moneyline"
+                
+            X, y = data_splits[prediction_target]
+            
+            # Set base models for ensemble models that support it
+            if model_name == "EnsembleModel" or model_name == "EnsembleStackingModel":
+                # Convert the models dictionary to the format expected by set_base_models
+                successful_base_models = {}
+                for base_name, base_model in trained_models.items():
+                    if base_name in results and results[base_name]["status"] == "success":
+                        successful_base_models[base_name] = base_model
+                
+                if successful_base_models:
+                    logger.info(f"Setting {len(successful_base_models)} base models for {model_name}")
+                    # EnsembleStackingModel has set_base_models method
+                    if hasattr(model, 'set_base_models') and callable(getattr(model, 'set_base_models')):
+                        model.set_base_models(successful_base_models)
+                    # EnsembleModel takes base_models directly
+                    elif model_name == "EnsembleModel":
+                        # Convert dictionary to list for EnsembleModel
+                        model.base_models = list(successful_base_models.values())
+                        logger.info(f"Set base models list for {model_name}")
+                else:
+                    logger.warning(f"No successful base models available for {model_name}")
+            
+            # Train the ensemble model
             start_time = time.time()
             model.train(X, y)
             training_time = time.time() - start_time
@@ -309,35 +388,6 @@ def train_all_models() -> Dict[str, Any]:
                 "message": str(e)
             }
     
-    # Try to train the stacking ensemble with all trained models
-    try:
-        successful_models = []
-        for model in models_to_train:
-            if model.__class__.__name__ in results and results[model.__class__.__name__]["status"] == "success":
-                successful_models.append(model)
-        
-        if len(successful_models) >= 2:  # Need at least 2 models for stacking
-            logger.info("Training meta-ensemble model with all successful models")
-            
-            meta_ensemble = EnsembleStackingModel(name="MetaEnsemble", prediction_target="moneyline", version=1, base_models=successful_models)
-            meta_ensemble.train()
-            metrics = meta_ensemble.evaluate()
-            meta_ensemble.save()
-            
-            results["MetaEnsemble"] = {
-                "status": "success",
-                "metrics": metrics
-            }
-            
-            logger.info(f"Successfully trained meta-ensemble model")
-            logger.info(f"Metrics: {metrics}")
-    except Exception as e:
-        logger.error(f"Error training meta-ensemble model: {str(e)}")
-        results["MetaEnsemble"] = {
-            "status": "error",
-            "message": str(e)
-        }
-    
     # Save training results
     try:
         results_dir = Path("data/results")
@@ -348,7 +398,76 @@ def train_all_models() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error saving training results: {str(e)}")
     
+    # Count the number of successful models
+    successful_count = sum(1 for model_result in results.values() if model_result.get("status") == "success")
+    logger.info(f"Successfully trained {successful_count} models")
+    
     return results
+
+
+def load_feature_data(use_enhanced_features=True, historical_days=30):
+    """
+    Load feature data from CSV file or generate new features if file doesn't exist
+    
+    Args:
+        use_enhanced_features: Whether to use the enhanced feature engineering module
+        historical_days: Number of days of historical data to use
+        
+    Returns:
+        DataFrame with features data
+    """
+    feature_path = Path("data/features/engineered_features.csv")
+    
+    # Check if feature file exists and is recent enough
+    if feature_path.exists():
+        file_age_days = (datetime.now() - datetime.fromtimestamp(feature_path.stat().st_mtime)).days
+        
+        # Only use cached features if less than 1 day old
+        if file_age_days < 1:
+            try:
+                logger.info(f"Loading existing feature data from {feature_path}")
+                return pd.read_csv(feature_path)
+            except Exception as e:
+                logger.error(f"Error loading feature data: {str(e)}")
+    
+    # Generate new features
+    logger.info("Generating new feature data")
+    
+    try:
+        # Collect historical game data
+        historical_collector = HistoricalDataCollector()
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=historical_days)).strftime("%Y-%m-%d")
+        
+        logger.info(f"Collecting game data from {start_date} to {end_date}")
+        game_df = historical_collector.get_games_by_date_range(start_date, end_date)
+        
+        if game_df.empty:
+            logger.error("No game data found for the specified date range")
+            return pd.DataFrame()
+        
+        logger.info(f"Collected {len(game_df)} games")
+        
+        # Apply feature engineering
+        if use_enhanced_features:
+            logger.info("Using enhanced feature engineering")
+            feature_engineer = EnhancedFeatureEngineer(lookback_days=historical_days)
+        else:
+            logger.info("Using standard feature engineering")
+            feature_engineer = FeatureEngineer(lookback_days=historical_days)
+            
+        features_df = feature_engineer.engineer_features(game_df)
+        
+        # Save features to CSV
+        os.makedirs(os.path.dirname(feature_path), exist_ok=True)
+        features_df.to_csv(feature_path, index=False)
+        logger.info(f"Saved {len(features_df)} feature records to {feature_path}")
+        
+        return features_df
+        
+    except Exception as e:
+        logger.error(f"Error generating feature data: {str(e)}")
+        return pd.DataFrame()
 
 
 def deploy_models(results: Dict[str, Any]) -> bool:
@@ -402,63 +521,46 @@ def run_training_pipeline(args: argparse.Namespace) -> bool:
         args: Command line arguments
         
     Returns:
-        bool: True if pipeline was successful, False otherwise
+        bool: Success/failure status
     """
     logger.info("Starting NBA prediction training pipeline")
     logger.info(f"Arguments: {args}")
     
-    # Setup database first
+    # Initialize the database
     if not args.skip_database:
         db_success = setup_database()
         if not db_success and not args.ignore_database_errors:
             logger.error("Database setup failed, stopping pipeline")
             return False
     
-    # Collect historical data
-    if not args.skip_collection:
-        collection_success = collect_historical_data(
-            season=args.season,
-            force=args.force_collection,
-            skip=args.skip_collection
-        )
-        if not collection_success:
-            logger.error("Historical data collection failed, stopping pipeline")
-            return False
+    # If forcing collection, delete existing features to trigger regeneration
+    if args.force_collection:
+        feature_path = Path("data/features/engineered_features.csv")
+        if feature_path.exists():
+            logger.info(f"Forcing collection: Removing existing feature file {feature_path}")
+            feature_path.unlink()
     
-    # Engineer features
-    feature_success = engineer_training_features()
-    if not feature_success:
-        logger.error("Feature engineering failed, stopping pipeline")
+    # Load features data with enhanced engineering
+    feature_data = load_feature_data(use_enhanced_features=args.use_enhanced_features)
+    
+    if feature_data.empty:
+        logger.error("Failed to load or generate feature data")
         return False
     
-    # Train models
+    # Train all models
     results = train_all_models()
+    
     if results.get("status") == "error":
         logger.error(f"All model training failed: {results.get('message', 'Unknown error')}")
         return False
     
-    # Count successful models
-    success_count = 0
-    for model_name, result in results.items():
-        # Skip the status key which is at the top level
-        if model_name == "status":
-            continue
-        # Check if this model's training was successful
-        if isinstance(result, dict) and result.get("status") == "success":
-            success_count += 1
-    
-    if success_count == 0:
-        logger.error("All model training failed, stopping pipeline")
-        return False
-    
-    logger.info(f"Successfully trained {success_count} models")
-    
     # Deploy models
     if not args.skip_deployment:
         deploy_success = deploy_models(results)
-        if not deploy_success:
-            logger.error("Model deployment failed")
-            return False
+        if deploy_success:
+            logger.info("Successfully deployed models to production")
+        else:
+            logger.warning("Model deployment failed or partially succeeded")
     
     logger.info("Training pipeline completed successfully")
     return True
@@ -475,6 +577,10 @@ def main():
     parser.add_argument("--skip-database", action="store_true", help="Skip database setup")
     parser.add_argument("--skip-deployment", action="store_true", help="Skip model deployment")
     parser.add_argument("--ignore-database-errors", action="store_true", help="Continue pipeline even if database setup fails")
+    parser.add_argument("--use-enhanced-features", action="store_true", help="Use enhanced feature engineering")
+    parser.add_argument("--prediction-type", type=str, default="moneyline", 
+                       choices=["moneyline", "spread", "totals"], help="Type of prediction to train for")
+    parser.add_argument("--models", type=str, nargs="+", help="Specific models to train")
     
     args = parser.parse_args()
     

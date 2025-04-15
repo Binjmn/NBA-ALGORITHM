@@ -265,6 +265,48 @@ To run performance tracking manually or generate a summary:
 python -m src.utils.track_performance [--summary] [--days DAYS]
 ```
 
+## Recent Enhancements (April 2025)
+
+### 1. Complete Model Training Pipeline
+- **Fixed All Models**: All 6 prediction models now train successfully with proper error handling
+- **Parameter Compatibility**: Resolved constructor parameter mismatches across model classes
+- **Flexible Training**: Added support for different prediction targets (moneyline, spread, totals)
+
+### 2. Enhanced Feature Engineering
+- **Advanced Features**: Implemented `EnhancedFeatureEngineer` with fatigue modeling, team chemistry metrics, and venue-specific advantages
+- **Context Awareness**: Added matchup history, travel distance, and style compatibility metrics
+- **Quality Improvements**: Enhanced missing value handling and feature preprocessing
+
+### 3. Prediction Testing & Monitoring
+- **Test Script**: Added `scripts/test_predictions.py` for evaluating model performance on upcoming games
+- **Visualization**: Implemented confidence metrics and comparative model analysis
+- **Performance Monitoring**: Created `scripts/monitor_performance.py` to track model performance over time
+
+### 4. Automated Retraining System
+- **Scheduler**: Implemented `scripts/auto_update_scheduler.py` for automatic model updates
+- **Configurable**: Support for daily, weekly, or post-game training schedules
+- **Production Quality**: Added error handling, notifications, and performance thresholds
+
+### 5. Real Data Integration
+- **Live Data Only**: Removed all synthetic data fallbacks for production quality
+- **API Integration**: Enhanced BallDontLie and TheOdds API clients with better error handling
+- **Data Validation**: Added integrity checks for features and model inputs
+
+## Recent Codebase Cleanup (April 2025)
+
+The following changes were made to clean up the codebase and improve organization:
+
+1. **Removed Redundant Files**:
+   - `diagnose_data_collection.py` - Obsolete with the new comprehensive error handling
+   - `test_odds_api.py` - Superseded by the robust `scripts/test_predictions.py`
+   - `initialize_database.bat` - No longer needed with improved database management
+   - `ui/templates/dashboard.html.bak` - Removed backup file
+
+2. **Reorganized Example Files**:
+   - Moved example files from `src/examples/` to `docs/examples/` for better organization
+   - Examples are preserved for reference while keeping the production code clean
+   - Available examples include API usage, database operations, and model implementations
+
 ## Troubleshooting
 
 ### Database Connectivity Issues

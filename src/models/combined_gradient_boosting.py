@@ -26,7 +26,15 @@ from typing import Dict, List, Any, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-import lightgbm as lgb
+
+# Safe LightGBM import with fallback options
+try:
+    import lightgbm as lgb
+    HAS_LIGHTGBM = True
+except ImportError:
+    HAS_LIGHTGBM = False
+    logging.warning("LightGBM not available, falling back to XGBoost only")
+    
 from datetime import datetime, timezone
 
 from src.models.base_model import BaseModel
@@ -138,21 +146,28 @@ class CombinedGradientBoostingModel(BaseModel):
             self.xgb_model.fit(X, y)
             
             # Initialize and train LightGBM model
-            if self.model_type == 'classification':
-                self.lgb_model = lgb.LGBMClassifier(**self.lgb_params)
-            else:  # 'regression'
-                self.lgb_model = lgb.LGBMRegressor(**self.lgb_params)
-            
-            logger.info(f"Training LightGBM component of {self.name} model with {len(X)} samples")
-            self.lgb_model.fit(X, y)
+            if HAS_LIGHTGBM:
+                if self.model_type == 'classification':
+                    self.lgb_model = lgb.LGBMClassifier(**self.lgb_params)
+                else:  # 'regression'
+                    self.lgb_model = lgb.LGBMRegressor(**self.lgb_params)
+                
+                logger.info(f"Training LightGBM component of {self.name} model with {len(X)} samples")
+                self.lgb_model.fit(X, y)
             
             # Set combined model (used for feature importance)
-            self.model = {
-                'xgb': self.xgb_model,
-                'lgb': self.lgb_model,
-                'xgb_weight': self.xgb_weight,
-                'lgb_weight': self.lgb_weight
-            }
+            if HAS_LIGHTGBM:
+                self.model = {
+                    'xgb': self.xgb_model,
+                    'lgb': self.lgb_model,
+                    'xgb_weight': self.xgb_weight,
+                    'lgb_weight': self.lgb_weight
+                }
+            else:
+                self.model = {
+                    'xgb': self.xgb_model,
+                    'xgb_weight': 1.0
+                }
             
             # Record training time
             self.trained_at = datetime.now(timezone.utc)
@@ -175,7 +190,7 @@ class CombinedGradientBoostingModel(BaseModel):
         Returns:
             Array of weighted predictions from both models
         """
-        if not self.is_trained or self.xgb_model is None or self.lgb_model is None:
+        if not self.is_trained or self.xgb_model is None:
             logger.error(f"Cannot predict with untrained model: {self.name}")
             return np.array([])
         
@@ -194,30 +209,34 @@ class CombinedGradientBoostingModel(BaseModel):
             
             # Get predictions from both models
             xgb_predictions = self.xgb_model.predict(X)
-            lgb_predictions = self.lgb_model.predict(X)
             
-            # Combine predictions using weights
-            if self.model_type == 'classification':
-                # For classification, we need to handle classes carefully
-                # If the prediction outputs are the same shape, we can apply weighted average
-                if xgb_predictions.shape == lgb_predictions.shape:
+            if HAS_LIGHTGBM and self.lgb_model is not None:
+                lgb_predictions = self.lgb_model.predict(X)
+                
+                # Combine predictions using weights
+                if self.model_type == 'classification':
+                    # For classification, we need to handle classes carefully
+                    # If the prediction outputs are the same shape, we can apply weighted average
+                    if xgb_predictions.shape == lgb_predictions.shape:
+                        combined_predictions = (
+                            xgb_predictions * self.xgb_weight + 
+                            lgb_predictions * self.lgb_weight
+                        )
+                        # Round for class labels (assuming binary classification)
+                        if len(combined_predictions.shape) == 1 or combined_predictions.shape[1] == 1:
+                            combined_predictions = np.round(combined_predictions).astype(int)
+                    else:
+                        # If shapes differ, just use one model (fallback)
+                        logger.warning("Model outputs have different shapes. Using XGBoost predictions only.")
+                        combined_predictions = xgb_predictions
+                else:  # 'regression'
+                    # For regression, simple weighted average
                     combined_predictions = (
                         xgb_predictions * self.xgb_weight + 
                         lgb_predictions * self.lgb_weight
                     )
-                    # Round for class labels (assuming binary classification)
-                    if len(combined_predictions.shape) == 1 or combined_predictions.shape[1] == 1:
-                        combined_predictions = np.round(combined_predictions).astype(int)
-                else:
-                    # If shapes differ, just use one model (fallback)
-                    logger.warning("Model outputs have different shapes. Using XGBoost predictions only.")
-                    combined_predictions = xgb_predictions
-            else:  # 'regression'
-                # For regression, simple weighted average
-                combined_predictions = (
-                    xgb_predictions * self.xgb_weight + 
-                    lgb_predictions * self.lgb_weight
-                )
+            else:
+                combined_predictions = xgb_predictions
             
             return combined_predictions
             
@@ -235,7 +254,7 @@ class CombinedGradientBoostingModel(BaseModel):
         Returns:
             Array of weighted probability predictions from both models
         """
-        if not self.is_trained or self.xgb_model is None or self.lgb_model is None:
+        if not self.is_trained or self.xgb_model is None:
             logger.error(f"Cannot predict with untrained model: {self.name}")
             return np.array([])
         
@@ -258,20 +277,24 @@ class CombinedGradientBoostingModel(BaseModel):
             
             # Get probability predictions from both models
             xgb_proba = self.xgb_model.predict_proba(X)
-            lgb_proba = self.lgb_model.predict_proba(X)
             
-            # Combine probabilities using weights
-            if xgb_proba.shape == lgb_proba.shape:
-                combined_proba = (
-                    xgb_proba * self.xgb_weight + 
-                    lgb_proba * self.lgb_weight
-                )
-                # Normalize to ensure probabilities sum to 1
-                row_sums = combined_proba.sum(axis=1).reshape(-1, 1)
-                combined_proba = combined_proba / row_sums
+            if HAS_LIGHTGBM and self.lgb_model is not None:
+                lgb_proba = self.lgb_model.predict_proba(X)
+                
+                # Combine probabilities using weights
+                if xgb_proba.shape == lgb_proba.shape:
+                    combined_proba = (
+                        xgb_proba * self.xgb_weight + 
+                        lgb_proba * self.lgb_weight
+                    )
+                    # Normalize to ensure probabilities sum to 1
+                    row_sums = combined_proba.sum(axis=1).reshape(-1, 1)
+                    combined_proba = combined_proba / row_sums
+                else:
+                    # If shapes differ, just use one model (fallback)
+                    logger.warning("Model probability outputs have different shapes. Using XGBoost probabilities only.")
+                    combined_proba = xgb_proba
             else:
-                # If shapes differ, just use one model (fallback)
-                logger.warning("Model probability outputs have different shapes. Using XGBoost probabilities only.")
                 combined_proba = xgb_proba
             
             return combined_proba
@@ -287,20 +310,24 @@ class CombinedGradientBoostingModel(BaseModel):
         Returns:
             Dictionary mapping feature names to importance scores
         """
-        if not self.is_trained or self.xgb_model is None or self.lgb_model is None:
+        if not self.is_trained or self.xgb_model is None:
             logger.error(f"Cannot get feature importance from untrained model: {self.name}")
             return {}
         
         try:
             # Get feature importances from both models
             xgb_importances = self.xgb_model.feature_importances_
-            lgb_importances = self.lgb_model.feature_importances_
             
-            # Combine feature importances using the same weights as predictions
-            combined_importances = (
-                xgb_importances * self.xgb_weight + 
-                lgb_importances * self.lgb_weight
-            )
+            if HAS_LIGHTGBM and self.lgb_model is not None:
+                lgb_importances = self.lgb_model.feature_importances_
+                
+                # Combine feature importances using the same weights as predictions
+                combined_importances = (
+                    xgb_importances * self.xgb_weight + 
+                    lgb_importances * self.lgb_weight
+                )
+            else:
+                combined_importances = xgb_importances
             
             # Create a dictionary mapping feature names to their importance scores
             feature_importance = {}
@@ -355,14 +382,15 @@ class CombinedGradientBoostingModel(BaseModel):
                     from sklearn.metrics import accuracy_score
                     metrics['xgb_accuracy'] = accuracy_score(y, xgb_pred)
                 
-                # LightGBM individual metrics
-                lgb_pred = self.lgb_model.predict(X)
-                if self.model_type == 'regression':
-                    metrics['lgb_mae'] = np.mean(np.abs(y - lgb_pred))
-                    metrics['lgb_mse'] = np.mean((y - lgb_pred) ** 2)
-                    metrics['lgb_rmse'] = np.sqrt(metrics['lgb_mse'])
-                else:  # classification
-                    metrics['lgb_accuracy'] = accuracy_score(y, lgb_pred)
+                if HAS_LIGHTGBM and self.lgb_model is not None:
+                    # LightGBM individual metrics
+                    lgb_pred = self.lgb_model.predict(X)
+                    if self.model_type == 'regression':
+                        metrics['lgb_mae'] = np.mean(np.abs(y - lgb_pred))
+                        metrics['lgb_mse'] = np.mean((y - lgb_pred) ** 2)
+                        metrics['lgb_rmse'] = np.sqrt(metrics['lgb_mse'])
+                    else:  # classification
+                        metrics['lgb_accuracy'] = accuracy_score(y, lgb_pred)
             except Exception as inner_e:
                 logger.warning(f"Error computing individual model metrics: {str(inner_e)}")
             
@@ -389,17 +417,27 @@ class CombinedGradientBoostingModel(BaseModel):
             
             # Get individual model feature importances
             xgb_importance = {}
-            lgb_importance = {}
-            try:
-                for i, feature_name in enumerate(self.feature_names):
-                    xgb_importance[feature_name] = float(self.xgb_model.feature_importances_[i])
-                    lgb_importance[feature_name] = float(self.lgb_model.feature_importances_[i])
-                
-                # Sort by importance
-                xgb_importance = dict(sorted(xgb_importance.items(), key=lambda x: x[1], reverse=True))
-                lgb_importance = dict(sorted(lgb_importance.items(), key=lambda x: x[1], reverse=True))
-            except Exception as inner_e:
-                logger.warning(f"Error extracting individual model importances: {str(inner_e)}")
+            if HAS_LIGHTGBM and self.lgb_model is not None:
+                lgb_importance = {}
+                try:
+                    for i, feature_name in enumerate(self.feature_names):
+                        xgb_importance[feature_name] = float(self.xgb_model.feature_importances_[i])
+                        lgb_importance[feature_name] = float(self.lgb_model.feature_importances_[i])
+                    
+                    # Sort by importance
+                    xgb_importance = dict(sorted(xgb_importance.items(), key=lambda x: x[1], reverse=True))
+                    lgb_importance = dict(sorted(lgb_importance.items(), key=lambda x: x[1], reverse=True))
+                except Exception as inner_e:
+                    logger.warning(f"Error extracting individual model importances: {str(inner_e)}")
+            else:
+                try:
+                    for i, feature_name in enumerate(self.feature_names):
+                        xgb_importance[feature_name] = float(self.xgb_model.feature_importances_[i])
+                    
+                    # Sort by importance
+                    xgb_importance = dict(sorted(xgb_importance.items(), key=lambda x: x[1], reverse=True))
+                except Exception as inner_e:
+                    logger.warning(f"Error extracting individual model importances: {str(inner_e)}")
             
             # Create model weights dictionary with model specific details
             model_data = {
@@ -408,7 +446,7 @@ class CombinedGradientBoostingModel(BaseModel):
                 'weights': {
                     'feature_importances': feature_importance,
                     'xgb_importance': xgb_importance,
-                    'lgb_importance': lgb_importance,
+                    'lgb_importance': lgb_importance if HAS_LIGHTGBM and self.lgb_model is not None else {},
                     'xgb_weight': self.xgb_weight,
                     'lgb_weight': self.lgb_weight,
                     'prediction_target': self.prediction_target

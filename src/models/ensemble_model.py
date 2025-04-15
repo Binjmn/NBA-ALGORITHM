@@ -44,27 +44,35 @@ class EnsembleModel(BaseModel):
     - Handles both classification (win/loss) and regression (spread/total) tasks
     """
     
-    def __init__(self, prediction_type: str = "classification", version: int = 1,
+    def __init__(self, name: str = "EnsembleStacking", prediction_target: str = "moneyline", version: int = 1,
                 base_models: Optional[List[BaseModel]] = None,
                 meta_params: Optional[Dict[str, Any]] = None):
         """
         Initialize the Ensemble Stacking model
         
         Args:
-            prediction_type: Type of prediction ('classification' or 'regression')
+            name: Model name
+            prediction_target: What the model is predicting ('moneyline', 'spread', 'totals')
             version: Model version number
             base_models: Optional list of pre-trained base models
             meta_params: Optional parameters for the meta-learner
         """
-        super().__init__(name="EnsembleStacking", model_type=prediction_type, version=version)
+        # Determine model type based on prediction target
+        if prediction_target in ['moneyline']:
+            model_type = 'classification'
+        else:  # 'spread', 'totals', 'player_points', etc.
+            model_type = 'regression'
+            
+        super().__init__(name=name, model_type=model_type, version=version)
+        self.prediction_target = prediction_target
         
         # Store prediction type
-        self.prediction_type = prediction_type
+        self.prediction_type = model_type
         
         # Initialize base models if not provided
         self.base_models = base_models or []
         if not self.base_models:
-            if prediction_type == "classification":
+            if self.prediction_type == "classification":
                 # Default classification models for moneyline predictions
                 self.base_models = [
                     RandomForestModel(version=1),
@@ -79,7 +87,7 @@ class EnsembleModel(BaseModel):
         
         # Initialize meta-learner parameters
         self.meta_params = meta_params or {}
-        if prediction_type == "classification":
+        if self.prediction_type == "classification":
             self.meta_params = self.meta_params or {
                 'C': 1.0,
                 'solver': 'lbfgs',
@@ -308,7 +316,7 @@ if __name__ == "__main__":
         
         if not X_train.empty and not y_train.empty:
             # Create and train the ensemble model
-            ensemble = EnsembleModel(prediction_type="classification", version=1)
+            ensemble = EnsembleModel(prediction_target="moneyline", version=1)
             ensemble.train(X_train, y_train)
             
             # Evaluate the ensemble model
