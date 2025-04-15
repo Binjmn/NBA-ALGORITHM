@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - NBA Betting Prediction System{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- System Status Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card card-dashboard h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-server me-2"></i> System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if system_status and not system_status.get('error') %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Scheduler Status:</span>
+                            {% if system_status.get('scheduler_running', False) %}
+                                <span class="badge bg-success">Running</span>
+                            {% else %}
+                                <span class="badge bg-danger">Stopped</span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Season:</span>
+                            <span class="fw-bold">{{ system_status.get('season', {}).get('display', 'Unknown') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Current Phase:</span>
+                            <span class="fw-bold">{{ system_status.get('season', {}).get('phase', 'Unknown') }}</span>
+                        </div>
+                    </div>
+                    
+                    <h6 class="border-bottom pb-2 mb-3">Active Jobs</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Job Name</th>
+                                    <th>Next Run</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job_name, job_info in system_status.get('jobs', {}).items() %}
+                                <tr>
+                                    <td>{{ job_name }}</td>
+                                    <td>{{ job_info.next_run }}</td>
+                                    <td>
+                                        {% if job_info.active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Cannot connect to the prediction system API.
+                        <hr>
+                        <p class="mb-0">{{ system_status.get('error', 'Unknown error') }}</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('run_job') }}">
+                        <input type="hidden" name="job_name" value="daily_data_collection">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync me-1"></i> Refresh Data
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('run_job') }}">
+                        <input type="hidden" name="job_name" value="daily_predictions">
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-calculator me-1"></i> Generate Predictions
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Today's Predictions Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card card-dashboard h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-basketball-ball me-2"></i> Today's Predictions ({{ predictions.date }})
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% if predictions and predictions.games %}
+                    <div class="list-group list-group-flush">
+                        {% for game in predictions.games %}
+                            {% set confidence = game.prediction.confidence %}
+                            
+                            {% if confidence >= 70 %}
+                                {% set confidence_class = "high-confidence" %}
+                                {% set confidence_text = "High" %}
+                                {% set confidence_badge = "bg-success" %}
+                            {% elif confidence >= 55 %}
+                                {% set confidence_class = "medium-confidence" %}
+                                {% set confidence_text = "Medium" %}
+                                {% set confidence_badge = "bg-warning text-dark" %}
+                            {% else %}
+                                {% set confidence_class = "low-confidence" %}
+                                {% set confidence_text = "Low" %}
+                                {% set confidence_badge = "bg-danger" %}
+                            {% endif %}
+                            
+                            <div class="list-group-item p-3 prediction-card {{ confidence_class }}">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">{{ game.away_team }} @ {{ game.home_team }}</h6>
+                                        <small class="text-muted">{{ game.start_time }}</small>
+                                    </div>
+                                    <span class="badge {{ confidence_badge }}">{{ confidence_text }} Confidence</span>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Predicted Winner:</span>
+                                            <span class="fw-bold">{{ game.prediction.winner }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Confidence:</span>
+                                            <span class="fw-bold">{{ game.prediction.confidence }}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-2">
+                                
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Spread:</span>
+                                            <span>
+                                                {% if game.prediction.spread > 0 %}+{% endif %}{{ game.prediction.spread }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Total:</span>
+                                            <span>O/U {{ game.prediction.total }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center p-4">
+                        <i class="fas fa-info-circle fa-2x mb-3 text-muted"></i>
+                        <p>No predictions available for today.</p>
+                        <p class="text-muted small">This could be because there are no games scheduled or predictions haven't been generated yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-center">
+                <a href="{{ url_for('models') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-chart-line me-1"></i> View Model Performance
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Models Status Row -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-dashboard">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-robot me-2"></i> Prediction Models
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Random Forests -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Random Forests</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>68%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Combined XGBoost + LightGBM -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">XGBoost + LightGBM</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>73%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bayesian -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Bayesian</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>71%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Anomaly Detection -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Anomaly Detection</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-secondary">Inactive</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>65%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Model Mixing -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Model Mixing</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>75%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ensemble Stacking -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Ensemble Stacking</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>76%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hyperparameter Tuning -->
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="card-title">Hyperparameter Tuning</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Status:</span>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>7-Day Accuracy:</span>
+                                    <span>72%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

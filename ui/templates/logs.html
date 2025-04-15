@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}System Logs - NBA Betting Prediction System{% endblock %}
+
+{% block page_title %}System Logs{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list-alt me-2"></i> System Logs
+            </h5>
+            
+            <div class="d-flex">
+                <div class="dropdown me-2">
+                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="logFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        All Services
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="logFilterDropdown">
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('all')">All Services</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('scheduler')">Scheduler</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('data_collection')">Data Collection</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('data_processor')">Data Processing</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('model_training')">Model Training</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogs('predictions')">Predictions</a></li>
+                    </ul>
+                </div>
+                
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" id="logLevelDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        All Levels
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="logLevelDropdown">
+                        <li><a class="dropdown-item" href="#" onclick="filterLogLevel('all')">All Levels</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogLevel('INFO')">INFO</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogLevel('WARNING')">WARNING</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogLevel('ERROR')">ERROR</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterLogLevel('CRITICAL')">CRITICAL</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="logsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Level</th>
+                        <th>Service</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="log-entry" data-service="{{ log.service }}" data-level="{{ log.level }}">
+                        <td class="text-nowrap">{{ log.timestamp }}</td>
+                        <td>
+                            {% if log.level == 'INFO' %}
+                                <span class="badge bg-info text-dark">INFO</span>
+                            {% elif log.level == 'WARNING' %}
+                                <span class="badge bg-warning text-dark">WARNING</span>
+                            {% elif log.level == 'ERROR' %}
+                                <span class="badge bg-danger">ERROR</span>
+                            {% elif log.level == 'CRITICAL' %}
+                                <span class="badge bg-dark">CRITICAL</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ log.level }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.service }}</td>
+                        <td>{{ log.message }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <div>
+            <button class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-sync me-1"></i> Refresh Logs
+            </button>
+            <button class="btn btn-sm btn-outline-primary ms-2">
+                <i class="fas fa-download me-1"></i> Download Logs
+            </button>
+        </div>
+        
+        <div>
+            <select class="form-select form-select-sm" style="width: 150px;">
+                <option value="100" selected>Show last 100 logs</option>
+                <option value="200">Show last 200 logs</option>
+                <option value="500">Show last 500 logs</option>
+                <option value="1000">Show last 1000 logs</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" aria-labelledby="logDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logDetailModalLabel">Log Entry Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Timestamp</label>
+                    <p id="modal-timestamp" class="mb-2"></p>
+                    
+                    <label class="form-label fw-bold">Level</label>
+                    <p id="modal-level" class="mb-2"></p>
+                    
+                    <label class="form-label fw-bold">Service</label>
+                    <p id="modal-service" class="mb-2"></p>
+                    
+                    <label class="form-label fw-bold">Message</label>
+                    <p id="modal-message" class="mb-2"></p>
+                    
+                    <div id="modal-details-container" class="d-none">
+                        <label class="form-label fw-bold">Details</label>
+                        <pre id="modal-details" class="bg-light p-3 rounded"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter logs by service
+    function filterLogs(service) {
+        const rows = document.querySelectorAll('#logsTable tbody tr');
+        const dropdownBtn = document.getElementById('logFilterDropdown');
+        
+        rows.forEach(row => {
+            if (service === 'all' || row.getAttribute('data-service') === service) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update dropdown button text
+        dropdownBtn.textContent = service === 'all' ? 'All Services' : service;
+    }
+    
+    // Filter logs by level
+    function filterLogLevel(level) {
+        const rows = document.querySelectorAll('#logsTable tbody tr');
+        const dropdownBtn = document.getElementById('logLevelDropdown');
+        
+        rows.forEach(row => {
+            if (level === 'all' || row.getAttribute('data-level') === level) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update dropdown button text
+        dropdownBtn.textContent = level === 'all' ? 'All Levels' : level;
+    }
+    
+    // Show log details in modal
+    document.querySelectorAll('#logsTable tbody tr').forEach(row => {
+        row.addEventListener('click', function() {
+            const timestamp = this.cells[0].textContent;
+            const level = this.getAttribute('data-level');
+            const service = this.getAttribute('data-service');
+            const message = this.cells[3].textContent;
+            
+            document.getElementById('modal-timestamp').textContent = timestamp;
+            document.getElementById('modal-level').textContent = level;
+            document.getElementById('modal-service').textContent = service;
+            document.getElementById('modal-message').textContent = message;
+            
+            // Additional details would be loaded here in a real implementation
+            // For now, just some example details for demo purposes
+            const detailsContainer = document.getElementById('modal-details-container');
+            const detailsPre = document.getElementById('modal-details');
+            
+            if (message.includes('Collected data') || message.includes('Updated odds')) {
+                detailsContainer.classList.remove('d-none');
+                detailsPre.textContent = JSON.stringify({
+                    "task_id": "task_" + Math.random().toString(36).substring(2, 10),
+                    "execution_time": "3.24 seconds",
+                    "items_processed": 12,
+                    "success_rate": "100%",
+                    "timestamp": new Date().toISOString()
+                }, null, 2);
+            } else {
+                detailsContainer.classList.add('d-none');
+            }
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('logDetailModal'));
+            modal.show();
+        });
+    });
+</script>
+{% endblock %}

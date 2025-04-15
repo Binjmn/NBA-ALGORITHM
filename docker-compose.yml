@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Main prediction system service
+  nba-prediction:
+    build: .
+    container_name: nba-prediction
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./models:/app/models
+    environment:
+      - TZ=America/New_York
+      - DATABASE_URL=postgresql://nbauser:nba_secure_password@nba-db:5432/nba_predictions
+    depends_on:
+      - nba-db
+    restart: always
+    networks:
+      - nba-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Database for prediction storage and model metadata
+  nba-db:
+    image: postgres:14
+    container_name: nba-db
+    volumes:
+      - nba-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=nbauser
+      - POSTGRES_PASSWORD=nba_secure_password
+      - POSTGRES_DB=nba_predictions
+    restart: always
+    networks:
+      - nba-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nbauser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Simple web UI for monitoring and control
+  nba-ui:
+    build: ./ui
+    container_name: nba-ui
+    ports:
+      - "8080:80"
+    volumes:
+      - ./ui/static:/app/static
+      - ./config:/app/config:ro
+    depends_on:
+      - nba-prediction
+      - nba-db
+    environment:
+      - API_URL=http://nba-prediction:5000
+    restart: always
+    networks:
+      - nba-network
+
+volumes:
+  nba-db-data:
+    name: nba-db-data
+
+networks:
+  nba-network:
+    name: nba-network

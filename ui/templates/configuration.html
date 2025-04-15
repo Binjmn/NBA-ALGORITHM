@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - NBA Betting Prediction System{% endblock %}
+
+{% block page_title %}Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- API Configuration Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-key me-2"></i> API Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="api-config-form">
+                    <div class="mb-3">
+                        <label for="balldontlie-api" class="form-label">BallDontLie API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="balldontlie-api" 
+                                   value="{{ api_keys.balldontlie }}" placeholder="Enter your BallDontLie API key">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('balldontlie-api')">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <a href="https://www.balldontlie.io/home.html#api-access" target="_blank">
+                                Get a free API key from BallDontLie
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="theodds-api" class="form-label">The Odds API Key</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="theodds-api" 
+                                   value="{{ api_keys.theodds }}" placeholder="Enter your Odds API key">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('theodds-api')">
+                                <i class="far fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <a href="https://the-odds-api.com/" target="_blank">
+                                Sign up for The Odds API
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i> Save API Keys
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- System Settings Card -->
+        <div class="card mt-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs me-2"></i> System Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="system-settings-form">
+                    <div class="mb-3">
+                        <label for="data-collection-time" class="form-label">Daily Data Collection Time</label>
+                        <input type="time" class="form-control" id="data-collection-time" value="06:00">
+                        <div class="form-text">Eastern Time (EST/EDT)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="odds-update-frequency" class="form-label">Odds Update Frequency</label>
+                        <select class="form-select" id="odds-update-frequency">
+                            <option value="1">Every hour</option>
+                            <option value="2">Every 2 hours</option>
+                            <option value="4" selected>Every 4 hours</option>
+                            <option value="6">Every 6 hours</option>
+                            <option value="8">Every 8 hours</option>
+                            <option value="12">Every 12 hours</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email-notifications" class="form-label">Email Notifications</label>
+                        <input type="email" class="form-control" id="email-notifications" 
+                               placeholder="Enter email for system notifications">
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="send-daily-report" checked>
+                        <label class="form-check-label" for="send-daily-report">Send daily prediction report</label>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="send-error-alerts" checked>
+                        <label class="form-check-label" for="send-error-alerts">Send error alerts</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fas fa-save me-2"></i> Save System Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Model Settings Card -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-robot me-2"></i> Model Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="model-settings-form">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Status</th>
+                                    <th>Weight</th>
+                                    <th>Min Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for model_name, settings in model_settings.items() %}
+                                <tr>
+                                    <td>{{ model_name }}</td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="model-{{ loop.index }}-status" 
+                                                   {% if settings.enabled %}checked{% endif %}>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               id="model-{{ loop.index }}-weight" 
+                                               value="{{ settings.weight }}" min="0" max="100">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               id="model-{{ loop.index }}-confidence" 
+                                               value="{{ settings.min_confidence }}" min="0" max="100">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>Global Model Settings</h6>
+                        <hr>
+                        
+                        <div class="mb-3">
+                            <label for="training-frequency" class="form-label">Model Training Frequency</label>
+                            <select class="form-select" id="training-frequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="biweekly">Bi-weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="prediction-threshold" class="form-label">Prediction Confidence Threshold</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range me-2" id="prediction-threshold" min="50" max="90" value="65">
+                                <span id="prediction-threshold-value">65%</span>
+                            </div>
+                            <div class="form-text">Only show predictions with confidence above this threshold</div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="archive-historical" checked>
+                            <label class="form-check-label" for="archive-historical">Archive historical predictions</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i> Save Model Configuration
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Management Card -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-database me-2"></i> Data Management
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Data Backup</h5>
+                        <p class="card-text">Configure automatic backups of prediction data and model states.</p>
+                        <div class="mb-3">
+                            <label for="backup-frequency" class="form-label">Backup Frequency</label>
+                            <select class="form-select" id="backup-frequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly" selected>Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary">Configure Backups</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Data Sources</h5>
+                        <p class="card-text">Manage data sources and collection settings.</p>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="source-balldonlie" checked>
+                                <label class="form-check-label" for="source-balldonlie">BallDontLie API</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="source-theodds" checked>
+                                <label class="form-check-label" for="source-theodds">The Odds API</label>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary">Configure Sources</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Data Cleanup</h5>
+                        <p class="card-text">Configure automatic cleanup of old data.</p>
+                        <div class="mb-3">
+                            <label for="retention-period" class="form-label">Data Retention</label>
+                            <select class="form-select" id="retention-period">
+                                <option value="30">30 days</option>
+                                <option value="90" selected>90 days</option>
+                                <option value="180">6 months</option>
+                                <option value="365">1 year</option>
+                                <option value="0">Keep all data</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary">Configure Cleanup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Toggle password visibility
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+        } else {
+            input.type = "password";
+        }
+    }
+    
+    // Update threshold value display
+    document.getElementById('prediction-threshold').addEventListener('input', function() {
+        document.getElementById('prediction-threshold-value').textContent = this.value + '%';
+    });
+    
+    // Simulate saving forms
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Saving...';
+            submitBtn.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                submitBtn.innerHTML = '<i class="fas fa-check me-2"></i> Saved!';
+                
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }, 2000);
+            }, 1500);
+        });
+    });
+</script>
+{% endblock %}

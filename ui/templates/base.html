@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NBA Betting Prediction System{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #212529;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        .sidebar-link {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            padding: 10px 20px;
+            display: block;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-link:hover, .sidebar-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .system-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .system-healthy {
+            background-color: rgba(40, 167, 69, 0.2);
+            border: 1px solid #28a745;
+        }
+        
+        .system-unhealthy {
+            background-color: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+        }
+        
+        .card-dashboard {
+            transition: transform 0.3s;
+        }
+        
+        .card-dashboard:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .prediction-card {
+            border-left: 5px solid #007bff;
+        }
+        
+        .high-confidence {
+            border-left-color: #28a745;
+        }
+        
+        .medium-confidence {
+            border-left-color: #ffc107;
+        }
+        
+        .low-confidence {
+            border-left-color: #dc3545;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 p-0 sidebar">
+                <div class="text-center py-4">
+                    <h4>NBA PREDICTION</h4>
+                    <p class="text-muted small mb-0">v0.3.0</p>
+                </div>
+                
+                <hr class="my-2">
+                
+                <nav class="mt-2">
+                    <a href="{{ url_for('index') }}" class="sidebar-link {% if request.path == '/' %}active{% endif %}">
+                        <i class="fas fa-home me-2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('models') }}" class="sidebar-link {% if request.path == '/models' %}active{% endif %}">
+                        <i class="fas fa-chart-line me-2"></i> Models
+                    </a>
+                    <a href="{{ url_for('configuration') }}" class="sidebar-link {% if request.path == '/configuration' %}active{% endif %}">
+                        <i class="fas fa-cogs me-2"></i> Configuration
+                    </a>
+                    <a href="{{ url_for('logs') }}" class="sidebar-link {% if request.path == '/logs' %}active{% endif %}">
+                        <i class="fas fa-list-alt me-2"></i> Logs
+                    </a>
+                </nav>
+                
+                <hr class="my-2">
+                
+                <!-- System Status -->
+                <div class="p-3">
+                    <h6 class="text-uppercase text-muted small">System Status</h6>
+                    
+                    {% if is_healthy %}
+                    <div class="system-status system-healthy">
+                        <i class="fas fa-check-circle me-2"></i> System Healthy
+                    </div>
+                    {% else %}
+                    <div class="system-status system-unhealthy">
+                        <i class="fas fa-exclamation-triangle me-2"></i> System Issue
+                    </div>
+                    {% endif %}
+                    
+                    <div class="small text-muted mt-2">
+                        Current Season: 
+                        {% if system_status and not system_status.get('error') %}
+                            {{ system_status.get('season', {}).get('display', 'Unknown') }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                    
+                    <div class="small text-muted">
+                        Phase: 
+                        {% if system_status and not system_status.get('error') %}
+                            {{ system_status.get('season', {}).get('phase', 'Unknown') }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mt-auto p-3 text-center">
+                    <form method="POST" action="{{ url_for('run_job') }}" class="d-grid gap-2">
+                        <input type="hidden" name="job_name" value="daily_data_collection">
+                        <button type="submit" class="btn btn-sm btn-outline-light">
+                            <i class="fas fa-sync me-2"></i> Refresh Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10 p-0">
+                <!-- Top Navigation -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                    <div class="container-fluid">
+                        <span class="navbar-text">
+                            {% block page_title %}Dashboard{% endblock %}
+                        </span>
+                        
+                        <div class="ms-auto">
+                            <span class="text-muted me-3">
+                                <i class="fas fa-clock me-1"></i> 
+                                <span id="current-time"></span>
+                            </span>
+                        </div>
+                    </div>
+                </nav>
+                
+                <!-- Content -->
+                <div class="container-fluid p-4">
+                    {% if request.args.get('job_success') %}
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        Successfully triggered job: {{ request.args.get('job_success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    
+                    {% if request.args.get('job_error') %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ request.args.get('job_error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Clock Script -->
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('en-US', {
+                timeZone: 'America/New_York',
+                dateStyle: 'medium',
+                timeStyle: 'medium'
+            }) + ' EST';
+        }
+        
+        // Update immediately and then every second
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

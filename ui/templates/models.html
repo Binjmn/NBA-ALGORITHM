@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Model Performance - NBA Betting Prediction System{% endblock %}
+
+{% block page_title %}Model Performance{% endblock %}
+
+{% block extra_css %}
+<!-- Plotly CSS -->
+<style>
+    .model-config-card {
+        transition: all 0.3s ease;
+    }
+    
+    .model-config-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .model-performance-graph {
+        height: 500px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Performance Graph -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-chart-line me-2"></i> 7-Day Model Performance
+        </h5>
+    </div>
+    <div class="card-body">
+        <div id="performance-chart" class="model-performance-graph"></div>
+    </div>
+</div>
+
+<!-- Model Cards -->
+<div class="row">
+    <!-- Random Forests -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Random Forests</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="rf-toggle" checked>
+                        <label class="form-check-label" for="rf-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Captures complex patterns between team statistics and game outcomes, particularly effective for identifying rest advantages.</p>
+                
+                <div class="mb-3">
+                    <label for="rf-weight" class="form-label">Model Weight: <span id="rf-weight-value">15</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="15" id="rf-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="rf-confidence" class="form-label">Min Confidence: <span id="rf-confidence-value">60</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="60" id="rf-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">68%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">65%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-14</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- XGBoost + LightGBM -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">XGBoost + LightGBM</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="xgb-toggle" checked>
+                        <label class="form-check-label" for="xgb-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Combines two powerful gradient boosting frameworks to provide deep analysis of game dynamics and player performance trends.</p>
+                
+                <div class="mb-3">
+                    <label for="xgb-weight" class="form-label">Model Weight: <span id="xgb-weight-value">20</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="20" id="xgb-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="xgb-confidence" class="form-label">Min Confidence: <span id="xgb-confidence-value">65</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="65" id="xgb-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">73%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">70%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-13</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bayesian -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Bayesian</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="bayes-toggle" checked>
+                        <label class="form-check-label" for="bayes-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Updates probability estimates as more data becomes available, providing reliable confidence levels for predictions.</p>
+                
+                <div class="mb-3">
+                    <label for="bayes-weight" class="form-label">Model Weight: <span id="bayes-weight-value">15</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="15" id="bayes-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="bayes-confidence" class="form-label">Min Confidence: <span id="bayes-confidence-value">70</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="70" id="bayes-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">71%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">67%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-14</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Anomaly Detection -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Anomaly Detection</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="anomaly-toggle">
+                        <label class="form-check-label" for="anomaly-toggle">Inactive</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Identifies statistical outliers in team and player performance, flagging potential upset opportunities in the betting market.</p>
+                
+                <div class="mb-3">
+                    <label for="anomaly-weight" class="form-label">Model Weight: <span id="anomaly-weight-value">10</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="10" id="anomaly-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="anomaly-confidence" class="form-label">Min Confidence: <span id="anomaly-confidence-value">75</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="75" id="anomaly-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">65%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">62%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-10</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Model Mixing -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Model Mixing</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="mixing-toggle" checked>
+                        <label class="form-check-label" for="mixing-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Dynamically weights individual models based on their recent performance, optimizing for changing patterns throughout the season.</p>
+                
+                <div class="mb-3">
+                    <label for="mixing-weight" class="form-label">Model Weight: <span id="mixing-weight-value">15</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="15" id="mixing-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="mixing-confidence" class="form-label">Min Confidence: <span id="mixing-confidence-value">60</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="60" id="mixing-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">75%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">72%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-14</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ensemble Stacking -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Ensemble Stacking</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="ensemble-toggle" checked>
+                        <label class="form-check-label" for="ensemble-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Uses a meta-model to intelligently combine outputs from all other models, creating a more accurate final prediction.</p>
+                
+                <div class="mb-3">
+                    <label for="ensemble-weight" class="form-label">Model Weight: <span id="ensemble-weight-value">20</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="20" id="ensemble-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="ensemble-confidence" class="form-label">Min Confidence: <span id="ensemble-confidence-value">65</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="65" id="ensemble-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">76%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">74%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Training:</span>
+                    <span class="text-muted">2025-04-14</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hyperparameter Tuning -->
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card model-config-card h-100">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Hyperparameter Tuning</h5>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="hyper-toggle" checked>
+                        <label class="form-check-label" for="hyper-toggle">Active</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <p>Uses Bayesian optimization to continuously find the best configuration settings for all other models in the system.</p>
+                
+                <div class="mb-3">
+                    <label for="hyper-weight" class="form-label">Model Weight: <span id="hyper-weight-value">5</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="5" id="hyper-weight">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="hyper-confidence" class="form-label">Min Confidence: <span id="hyper-confidence-value">60</span>%</label>
+                    <input type="range" class="form-range" min="0" max="100" value="60" id="hyper-confidence">
+                </div>
+                
+                <div class="d-flex justify-content-between border-top pt-3">
+                    <span>7-Day Accuracy:</span>
+                    <span class="fw-bold">72%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Season Accuracy:</span>
+                    <span class="fw-bold">71%</span>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <span>Last Optimization:</span>
+                    <span class="text-muted">2025-04-12</span>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-wrench me-1"></i> Advanced Settings
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Settings Button -->
+<div class="text-center mt-3 mb-5">
+    <button class="btn btn-primary" id="save-model-settings">
+        <i class="fas fa-save me-2"></i> Save Model Settings
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Plotly JS -->
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+<script>
+    // Handle range input displays
+    document.querySelectorAll('.form-range').forEach(range => {
+        range.addEventListener('input', function() {
+            document.getElementById(this.id + '-value').textContent = this.value;
+        });
+    });
+    
+    // Plot model performance chart
+    const performanceChart = {{ graph_json|safe }};
+    Plotly.newPlot('performance-chart', performanceChart.data, performanceChart.layout);
+    
+    // Toggle switches for model status
+    document.querySelectorAll('.form-check-input').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const label = this.nextElementSibling;
+            label.textContent = this.checked ? 'Active' : 'Inactive';
+        });
+    });
+    
+    // Save button animation
+    document.getElementById('save-model-settings').addEventListener('click', function() {
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Saving...';
+        
+        // Simulate saving
+        setTimeout(() => {
+            this.innerHTML = '<i class="fas fa-check me-2"></i> Saved!';
+            
+            setTimeout(() => {
+                this.innerHTML = originalText;
+            }, 2000);
+        }, 1500);
+    });
+</script>
+{% endblock %}
