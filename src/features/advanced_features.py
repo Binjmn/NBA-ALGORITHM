@@ -26,12 +26,13 @@ logger = logging.getLogger(__name__)
 class FeatureEngineer:
     """Class for generating advanced features from NBA game data"""
     
-    def __init__(self, data_dir: str = None):
+    def __init__(self, data_dir: str = None, lookback_days: int = 30):
         """
         Initialize the feature engineer
         
         Args:
             data_dir: Directory containing historical data (will default to data/historical)
+            lookback_days: Number of days to look back for historical data
         """
         # Set up paths
         base_dir = Path(__file__).resolve().parent.parent.parent
@@ -47,8 +48,9 @@ class FeatureEngineer:
         
         # Feature settings
         self.rolling_window_sizes = [5, 10, 20]  # Last N games for rolling stats
+        self.lookback_days = lookback_days  # Days to look back for historical data
         
-        logger.info(f"Feature Engineer initialized with data directory: {self.data_dir}")
+        logger.info(f"Feature Engineer initialized with data directory: {self.data_dir} and lookback_days: {self.lookback_days}")
     
     def load_data(self) -> bool:
         """
@@ -515,22 +517,32 @@ class FeatureEngineer:
         logger.info(f"Added game stats features for {stats_added} games")
         return df
     
-    def engineer_features(self) -> pd.DataFrame:
+    def engineer_features(self, game_df: pd.DataFrame = None) -> pd.DataFrame:
         """
         Main method to engineer features
         
+        Args:
+            game_df: DataFrame with game data (optional). If provided, will use this instead of loading data.
+            
         Returns:
             pd.DataFrame: DataFrame with engineered features
         """
         logger.info("Starting feature engineering process")
         
-        # Load the data
-        if not self.load_data():
-            logger.error("Failed to load data for feature engineering")
-            return pd.DataFrame()
-        
-        # Create game DataFrame
-        games_df = self.create_game_dataframe()
+        # Either use provided game data or load it
+        games_df = None
+        if game_df is not None and not game_df.empty:
+            logger.info(f"Using provided game data with {len(game_df)} records")
+            games_df = game_df.copy()
+        else:
+            # Load the data
+            if not self.load_data():
+                logger.error("Failed to load data for feature engineering")
+                return pd.DataFrame()
+                
+            # Create game DataFrame
+            games_df = self.create_game_dataframe()
+            
         if games_df.empty:
             logger.error("Failed to create game DataFrame")
             return pd.DataFrame()
@@ -563,17 +575,18 @@ class FeatureEngineer:
 
 
 # Main function to run feature engineering
-def run_feature_engineering(data_dir: str = None) -> pd.DataFrame:
+def run_feature_engineering(data_dir: str = None, lookback_days: int = 30) -> pd.DataFrame:
     """
     Run the feature engineering process
     
     Args:
         data_dir: Directory containing historical data
+        lookback_days: Number of days to look back for historical data
         
     Returns:
         pd.DataFrame: DataFrame with engineered features
     """
-    engineer = FeatureEngineer(data_dir)
+    engineer = FeatureEngineer(data_dir, lookback_days)
     return engineer.engineer_features()
 
 

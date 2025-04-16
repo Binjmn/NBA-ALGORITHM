@@ -10,8 +10,8 @@ call .\venv\Scripts\activate.bat
 :: Install required packages if needed
 pip install lightgbm xgboost --quiet
 
-:: Run the training pipeline with auto-detection enabled
-python -m src.training_pipeline --auto-detect-season
+:: Run the training pipeline with auto-detection enabled and pass all additional arguments
+python -m src.training_pipeline --auto-detect-season %*
 
 :: Deactivate virtual environment
 call deactivate

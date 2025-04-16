@@ -420,3 +420,41 @@ class BaseModel(ABC):
         except Exception as e:
             logger.error(f"Error getting performance trend for {self.name}: {str(e)}")
             return []
+
+    def save(self, path: Optional[str] = None) -> bool:
+        """
+        Save the model to a file
+        
+        Args:
+            path: Optional path to save the model to. If None, a default path will be used.
+            
+        Returns:
+            bool: True if saving was successful, False otherwise
+        """
+        try:
+            import pickle
+            from pathlib import Path
+            
+            # Create models directory if it doesn't exist
+            models_dir = Path("models")
+            models_dir.mkdir(exist_ok=True)
+            
+            # Use default path if none provided
+            if path is None:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                path = models_dir / f"{self.name}_{timestamp}_v{self.version}.pkl"
+            else:
+                path = Path(path)
+                
+            # Ensure parent directories exist
+            path.parent.mkdir(exist_ok=True, parents=True)
+            
+            # Save the model
+            with open(path, 'wb') as f:
+                pickle.dump(self, f)
+                
+            logger.info(f"Saved {self.name} to {path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving {self.name}: {str(e)}")
+            return False

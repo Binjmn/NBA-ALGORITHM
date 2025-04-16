@@ -127,6 +127,11 @@ class EnsembleModel(BaseModel):
             # Store feature names
             self.feature_names = X.columns.tolist()
             
+            # Ensure base_models is a list, not a dictionary
+            if isinstance(self.base_models, dict):
+                self.base_models = list(self.base_models.values())
+                logger.info(f"Converted base_models dictionary to list with {len(self.base_models)} models")
+            
             # Train base models if they aren't already trained
             base_predictions = []
             for i, model in enumerate(self.base_models):
@@ -135,18 +140,28 @@ class EnsembleModel(BaseModel):
                     model.train(X, y)
                 
                 # Generate out-of-fold predictions to avoid overfitting
-                if self.prediction_type == "classification" and hasattr(model, 'predict_proba'):
-                    # For classification, use probability predictions
-                    cv = KFold(n_splits=5, shuffle=True, random_state=42)
-                    pred = cross_val_predict(model.model, X, y, cv=cv, method='predict_proba')
-                    # Use probability for positive class
-                    base_predictions.append(pred[:, 1].reshape(-1, 1))
+                cv = KFold(n_splits=5, shuffle=True, random_state=42)
+                
+                # For cross validation, we need to use the raw model instead of our wrapper
+                if hasattr(model, 'model') and model.model is not None:
+                    # Check if the underlying model has predict_proba (for classification)
+                    if self.prediction_type == "classification" and hasattr(model.model, 'predict_proba'):
+                        # For classification models with probability predictions
+                        pred = cross_val_predict(model.model, X, y, cv=cv, method='predict_proba')
+                        # Use probability for positive class
+                        base_predictions.append(pred[:, 1].reshape(-1, 1))
+                    else:
+                        # For regression models or classifiers without predict_proba
+                        pred = cross_val_predict(model.model, X, y, cv=cv)
+                        base_predictions.append(pred.reshape(-1, 1))
                 else:
-                    # For regression or non-probabilistic models, use point predictions
-                    cv = KFold(n_splits=5, shuffle=True, random_state=42)
-                    pred = cross_val_predict(model.model, X, y, cv=cv)
-                    base_predictions.append(pred.reshape(-1, 1))
+                    logger.warning(f"Base model {i+1} has no underlying model attribute, skipping")
             
+            # If we have no predictions, we can't train the meta model
+            if not base_predictions:
+                logger.error("No valid base predictions generated, cannot train meta-model")
+                return
+                
             # Combine base model predictions into a single feature matrix
             meta_features = np.hstack(base_predictions)
             
@@ -188,13 +203,13 @@ class EnsembleModel(BaseModel):
                     logger.error(f"Base model {i+1} is not trained")
                     return np.array([])
                 
-                # Use probability predictions for classification models
-                if self.prediction_type == "classification" and hasattr(model, 'predict_proba'):
+                # Check if the underlying model has predict_proba (for classification)
+                if self.prediction_type == "classification" and hasattr(model.model, 'predict_proba'):
                     pred = model.predict_proba(X)
                     # Use probability for positive class
                     base_predictions.append(pred[:, 1].reshape(-1, 1))
                 else:
-                    # Use point predictions for regression models
+                    # For regression models or classifiers without predict_proba
                     pred = model.predict(X)
                     base_predictions.append(pred.reshape(-1, 1))
             
@@ -213,52 +228,77 @@ class EnsembleModel(BaseModel):
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """
-        Predict class probabilities for the input samples
+        Predict class probabilities for classification models
         
         Args:
-            X: Feature matrix
+            X: Feature matrix matching the training features
             
         Returns:
             Array of class probabilities (only for classification models)
         """
         if not self.is_trained:
-            logger.error("Cannot predict probabilities with untrained model")
+            logger.error("Cannot predict with untrained model")
             return np.array([])
-        
+            
         if self.prediction_type != "classification":
-            logger.warning("predict_proba is not applicable for regression models")
-            return self.predict(X).reshape(-1, 1)
+            logger.error("predict_proba is only available for classification models")
+            return np.array([])
         
         try:
             # Get predictions from base models
             base_predictions = []
             for i, model in enumerate(self.base_models):
-                if not model.is_trained:
-                    logger.error(f"Base model {i+1} is not trained")
-                    return np.array([])
-                
-                # Use probability predictions for classification models
-                if hasattr(model, 'predict_proba'):
-                    pred = model.predict_proba(X)
-                    # Use probability for positive class
-                    base_predictions.append(pred[:, 1].reshape(-1, 1))
+                if hasattr(model, 'predict_proba') and callable(model.predict_proba):
+                    try:
+                        pred = model.predict_proba(X)
+                        # Ensure we get probabilities for positive class (class 1)
+                        if pred.shape[1] >= 2:  # Binary classification
+                            base_predictions.append(pred[:, 1].reshape(-1, 1))
+                        else:
+                            base_predictions.append(pred.reshape(-1, 1))
+                    except Exception as e:
+                        logger.warning(f"Error getting probability predictions from base model {i}: {str(e)}")
+                        # Use zeros as fallback
+                        base_predictions.append(np.zeros((X.shape[0], 1)))
                 else:
-                    # Use point predictions for models without predict_proba
-                    pred = model.predict(X)
-                    base_predictions.append(pred.reshape(-1, 1))
+                    # For models without predict_proba, use regular predictions converted to 0-1 range
+                    try:
+                        pred = model.predict(X)
+                        # Normalize predictions to [0, 1] range as an approximation of probability
+                        pred_norm = (pred - np.min(pred)) / (np.max(pred) - np.min(pred) + 1e-10)
+                        base_predictions.append(pred_norm.reshape(-1, 1))
+                    except Exception as e:
+                        logger.warning(f"Error getting predictions from base model {i}: {str(e)}")
+                        # Use zeros as fallback
+                        base_predictions.append(np.zeros((X.shape[0], 1)))
             
-            # Combine base model predictions into a single feature matrix
+            # Combine base model predictions
+            if not base_predictions:
+                # If no valid predictions, return default probabilities
+                return np.array([[0.5, 0.5]] * X.shape[0])
+                
             meta_features = np.hstack(base_predictions)
             
-            # Scale meta features
+            # Scale features
             meta_features_scaled = self.scaler.transform(meta_features)
             
-            # Make probability predictions with the meta-learner
-            return self.meta_learner.predict_proba(meta_features_scaled)
-            
+            # Get probability predictions from meta-learner
+            if hasattr(self.meta_learner, 'predict_proba'):
+                proba = self.meta_learner.predict_proba(meta_features_scaled)
+                return proba
+            else:
+                # If meta-learner doesn't have predict_proba, convert predictions to pseudo-probabilities
+                pred = self.meta_learner.predict(meta_features_scaled)
+                # Convert to probabilities for binary classification (0/1)
+                proba = np.zeros((len(pred), 2))
+                proba[:, 1] = (pred > 0.5).astype(float)
+                proba[:, 0] = 1 - proba[:, 1]
+                return proba
+                
         except Exception as e:
-            logger.error(f"Error predicting probabilities with Ensemble Stacking model: {str(e)}")
-            return np.array([])
+            logger.error(f"Error predicting probabilities with Ensemble model: {str(e)}")
+            # Return default probabilities as fallback
+            return np.array([[0.5, 0.5]] * X.shape[0])
     
     def get_feature_importance(self) -> Dict[str, float]:
         """

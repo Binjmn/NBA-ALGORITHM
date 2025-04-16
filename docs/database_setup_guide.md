@@ -44,13 +44,22 @@ Or set these as system environment variables.
 
 ### 4. Initialize the Database Schema
 
-Run the following command to initialize the database schema:
+For development or regular use, initialize the database with the production schema:
 
 ```bash
-psql -U postgres -d nba_prediction -f scripts/init_nba_schema.sql
+psql -U postgres -d nba_prediction -f scripts/production_schema.sql
 ```
 
-This will create all the necessary tables and indexes for the NBA Prediction System.
+If you encounter SQL reserved keyword issues, apply the fixes:
+
+```bash
+psql -U postgres -d nba_prediction -f scripts/fix_window_reserved.sql
+```
+
+For Docker deployment, the initialization script is automatically applied:
+```
+docker/init-db/01-init.sql
+```
 
 ### 5. Import NBA Data
 

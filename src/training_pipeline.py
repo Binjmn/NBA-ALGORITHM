@@ -28,6 +28,36 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union
 
+# Import models
+from src.models.random_forest_model import RandomForestModel
+from src.models.gradient_boosting_model import GradientBoostingModel
+from src.models.bayesian_model import BayesianModel
+from src.models.combined_gradient_boosting import CombinedGradientBoostingModel
+from src.models.ensemble_model import EnsembleModel
+from src.models.ensemble_stacking import EnsembleStackingModel
+
+# Import data collectors
+from src.data.historical_collector import HistoricalDataCollector
+
+# Import robustness utilities
+from src.utils.robustness import (
+    validate_training_data,
+    train_with_checkpointing,
+    analyze_feature_importance,
+    prune_low_importance_features,
+    train_models_parallel,
+    should_tune_hyperparameters,
+    detect_and_handle_outliers,
+    check_feature_drift
+)
+
+# Import project modules
+from src.features.advanced_features import FeatureEngineer
+from src.features.advanced_features_plus import EnhancedFeatureEngineer
+from src.models.base_model import BaseModel
+# Import SeasonManager for automatic season detection
+from src.utils.season_manager import SeasonManager
+
 # Set up logging
 log_dir = Path("logs")
 log_dir.mkdir(exist_ok=True)
@@ -47,20 +77,6 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# Import project modules
-from src.data.historical_collector import HistoricalDataCollector
-from src.features.advanced_features import FeatureEngineer
-from src.features.advanced_features_plus import EnhancedFeatureEngineer
-from src.models.base_model import BaseModel
-from src.models.random_forest_model import RandomForestModel
-from src.models.gradient_boosting_model import GradientBoostingModel
-from src.models.bayesian_model import BayesianModel
-from src.models.ensemble_model import EnsembleModel
-from src.models.combined_gradient_boosting import CombinedGradientBoostingModel
-from src.models.ensemble_stacking import EnsembleStackingModel
-# Import SeasonManager for automatic season detection
-from src.utils.season_manager import SeasonManager
 
 # ... (rest of the code remains the same)
 
@@ -92,7 +108,7 @@ def collect_historical_data(season: str, force: bool = False, skip: bool = False
     Collect historical NBA data
     
     Args:
-        season: Season to collect data for (e.g., "2025")
+        season: Current season to collect data for (e.g., "2025")
         force: Force collection even if data exists
         skip: Skip collection entirely
     
@@ -103,7 +119,7 @@ def collect_historical_data(season: str, force: bool = False, skip: bool = False
         logger.info("Skipping data collection as requested")
         return True
     
-    logger.info(f"Starting historical data collection for season {season}")
+    logger.info(f"Starting historical data collection for season {season} and previous seasons")
     
     try:
         # Check if we already have data for this season
@@ -121,20 +137,32 @@ def collect_historical_data(season: str, force: bool = False, skip: bool = False
             # Initialize collector
             collector = HistoricalDataCollector()
             
-            # Collect data
-            result = collector.collect_data_for_season(
-                season=season,
+            # Define seasons to collect (current season and 3 previous seasons)
+            current_season = int(season)
+            seasons_to_collect = [
+                str(current_season),      # Current season
+                str(current_season - 1),  # Previous season
+                str(current_season - 2),  # Two seasons ago
+                str(current_season - 3)   # Three seasons ago
+            ]
+            
+            logger.info(f"Collecting data for multiple seasons: {seasons_to_collect}")
+            
+            # Collect data for multiple seasons
+            result = collector.collect_data_for_multiple_seasons(
+                seasons=seasons_to_collect,
                 include_stats=True,
                 include_odds=False  # Skip odds collection as it was causing issues
             )
             
-            logger.info(f"Data collection result: {result}")
+            logger.info(f"Multi-season data collection result: {result}")
             
             # Check if data was collected
-            if not result or 'games' not in result or result['games'] == 0:
+            if not result or 'total_games' not in result or result['total_games'] == 0:
                 logger.error("No game data was collected")
                 return False
             
+            logger.info(f"Successfully collected {result['total_games']} games across {result['seasons_collected']} seasons")
             return True
         
         return True
@@ -184,14 +212,14 @@ def train_all_models() -> Dict[str, Any]:
         "RandomForestModel": RandomForestModel(version=1),
         "GradientBoostingModel": GradientBoostingModel(version=1),
         "BayesianModel": BayesianModel(prediction_target=prediction_type, version=1),
-        "CombinedGradientBoostingModel": CombinedGradientBoostingModel(prediction_target=prediction_type, version=1),
-        "EnsembleStackingModel": EnsembleStackingModel(prediction_target=prediction_type, version=1)
+        "CombinedGradientBoostingModel": CombinedGradientBoostingModel(prediction_target=prediction_type, version=1)
     }
     
     # Initialize and train ensemble models after base models
     # We'll train them separately after the base models are trained
     ensemble_models = {
-        "EnsembleModel": EnsembleModel(prediction_target=prediction_type, version=1)
+        "EnsembleModel": EnsembleModel(prediction_target=prediction_type, version=1),
+        "EnsembleStackingModel": EnsembleStackingModel(prediction_target=prediction_type, version=1)
     }
     
     feature_path = Path("data/features/engineered_features.csv")
@@ -217,22 +245,39 @@ def train_all_models() -> Dict[str, Any]:
             features_df['point_diff'] = features_df['home_score'] - features_df['away_score']
             logger.info("Created point_diff column from score difference")
 
-        # Ensure all metrics are numeric
+        # Identify target columns we need to preserve
+        target_cols = ['home_won', 'point_diff', 'game_id', 'date', 'home_team_id', 'away_team_id', 'home_score', 'away_score']
+        preserved_targets = {col: features_df[col] for col in target_cols if col in features_df.columns}
+        
+        # Ensure all metrics are numeric for feature columns
         numeric_cols = features_df.select_dtypes(include=['number']).columns
         features_df = features_df[numeric_cols]
+        
+        # Add back the target columns that might have been removed
+        for col, data in preserved_targets.items():
+            if col not in features_df.columns:
+                features_df[col] = data
+                logger.info(f"Preserved target column: {col}")
         
         # Identify feature columns (exclude targets and metadata)
         meta_cols = ['game_id', 'date', 'home_team_id', 'away_team_id', 'home_score', 'away_score', 'home_won', 'point_diff']
         feature_cols = [col for col in features_df.columns if col not in meta_cols]
         
-        # For each prediction target, prepare X and y
+        # Create data splits for each prediction target
         prediction_targets = {
             "moneyline": "home_won",    # Binary classification target
             "spread": "point_diff",      # Regression target
             "combined": "home_won"      # Default to moneyline for combined models
         }
         
-        # Create data splits for each prediction target
+        # Check for feature drift and handle outliers
+        drift_detected, _ = check_feature_drift(features_df)
+        if drift_detected:
+            logger.warning("Feature drift detected, proceeding with caution in model training")
+        
+        # Handle outliers in the feature data
+        features_df = detect_and_handle_outliers(features_df, columns=feature_cols)
+        
         data_splits = {}
         for target_name, target_col in prediction_targets.items():
             if target_col in features_df.columns:
@@ -256,73 +301,96 @@ def train_all_models() -> Dict[str, Any]:
         logger.error(f"Error loading feature data: {str(e)}")
         return {"status": "error", "message": f"Error loading data: {str(e)}"}
 
+    # Determine if we should perform hyperparameter tuning
+    perform_tuning = should_tune_hyperparameters()
+    if perform_tuning:
+        logger.info("Will perform hyperparameter tuning during model training")
+        # Update model parameters to enable tuning
+        for model in models.values():
+            if hasattr(model, 'params') and 'tune_hyperparameters' in model.params:
+                model.params['tune_hyperparameters'] = True
+    else:
+        logger.info("Skipping hyperparameter tuning (use cached parameters)")
+        for model in models.values():
+            if hasattr(model, 'params') and 'tune_hyperparameters' in model.params:
+                model.params['tune_hyperparameters'] = False
+
     # Get a count of how many models we're expecting to train
     expected_model_count = len(models) + len(ensemble_models)
     logger.info(f"Attempting to train {expected_model_count} models ({len(models)} base models and {len(ensemble_models)} ensemble models)")
 
-    # Initialize and train base models first
-    trained_models = {}
+    # Train base models in parallel
+    logger.info("Training base models in parallel")
+    X_moneyline, y_moneyline = data_splits["moneyline"]
+    base_results = train_models_parallel(models, X_moneyline, y_moneyline)
     
-    # Step 1: Train base models first
-    for model_name, model in models.items():
-        logger.info(f"Training base model: {model_name}")
+    # Process base model results
+    trained_models = {}
+    for model_name, res in base_results.items():
+        model = res["model"]
+        success = res["success"]
+        duration = res.get("duration", 0)
         
-        try:
-            # Get the appropriate data split for this model's prediction target
-            prediction_target = getattr(model, "prediction_target", "moneyline")
-            
-            if prediction_target not in data_splits:
-                logger.warning(f"No data split available for {prediction_target}, using moneyline")
-                prediction_target = "moneyline"
-                
-            X, y = data_splits[prediction_target]
-                
-            # Train the model
-            start_time = time.time()
-            model.train(X, y)
-            training_time = time.time() - start_time
-            
-            # Store the trained model for later use by ensemble models
+        if success:
             trained_models[model_name] = model
-            
-            # Evaluate the model
-            try:
-                metrics = model.evaluate(X, y)
-            except TypeError as e:
-                # If evaluate method doesn't accept parameters, use the default implementation
-                logger.warning(f"Model evaluate() method doesn't accept parameters: {str(e)}")
-                metrics = {"warning": "Model evaluation skipped due to interface mismatch"}
-                
-            # Save the model
-            try:
-                if hasattr(model, 'save') and callable(getattr(model, 'save')):
-                    model.save()
-                else:
-                    logger.warning(f"{model_name} does not have a save method, skipping persistence")
-            except Exception as e:
-                logger.error(f"Error saving {model_name}: {str(e)}")
-            
-            # Record results
             results[model_name] = {
                 "status": "success",
-                "training_time": training_time,
-                "metrics": metrics
+                "training_time": duration
             }
             
-            logger.info(f"Successfully trained {model_name} in {training_time:.2f} seconds")
-            logger.info(f"Metrics: {metrics}")
-        except Exception as e:
-            logger.error(f"Error training {model_name}: {str(e)}")
+            # Evaluate the model if it has an evaluate method
+            if hasattr(model, "evaluate"):
+                try:
+                    metrics = model.evaluate(X_moneyline, y_moneyline)
+                    results[model_name]["metrics"] = metrics
+                    logger.info(f"Metrics: {metrics}")
+                except Exception as e:
+                    logger.warning(f"Error evaluating {model_name}: {str(e)}")
+            
+            # Save model if it has a save method
+            if hasattr(model, "save") and callable(model.save):
+                try:
+                    model.save()
+                    logger.info(f"Saved {model_name} to disk")
+                except Exception as e:
+                    logger.warning(f"Error saving {model_name}: {str(e)}")
+            else:
+                logger.warning(f"{model_name} does not have a save method, skipping persistence")
+                
+            logger.info(f"Successfully trained {model_name} in {duration:.2f} seconds")
+        else:
             results[model_name] = {
                 "status": "error",
-                "message": str(e)
+                "error": res.get("error", "Unknown error during training")
             }
+            logger.error(f"Error training {model_name}: {res.get('error', 'Unknown error')}")
     
-    # Step 2: Configure and train ensemble models using the trained base models
+    # Analyze feature importance from trained models
+    if trained_models:
+        importance_df = analyze_feature_importance(trained_models, feature_cols)
+        
+        if not importance_df.empty and 'avg_importance_normalized' in importance_df.columns:
+            # Save feature importance analysis
+            importance_file = Path("data/analysis/feature_importance.csv")
+            importance_file.parent.mkdir(exist_ok=True)
+            importance_df.to_csv(importance_file)
+            logger.info(f"Saved feature importance analysis to {importance_file}")
+            
+            # Log top and bottom features
+            top_features = importance_df.head(10).index.tolist()
+            bottom_features = importance_df.tail(10).index.tolist()
+            logger.info(f"Top 10 important features: {', '.join(top_features)}")
+            logger.info(f"Least important features: {', '.join(bottom_features)}")
+    
+    # Initialize and train ensemble models with the base models
     for model_name, model in ensemble_models.items():
         logger.info(f"Training ensemble model: {model_name}")
         
         try:
+            # For ensemble models that need base models
+            if hasattr(model, "set_base_models"):
+                model.set_base_models(trained_models)
+            
             # Get the appropriate data split for this model's prediction target
             prediction_target = getattr(model, "prediction_target", "moneyline")
             
@@ -332,63 +400,46 @@ def train_all_models() -> Dict[str, Any]:
                 
             X, y = data_splits[prediction_target]
             
-            # Set base models for ensemble models that support it
-            if model_name == "EnsembleModel" or model_name == "EnsembleStackingModel":
-                # Convert the models dictionary to the format expected by set_base_models
-                successful_base_models = {}
-                for base_name, base_model in trained_models.items():
-                    if base_name in results and results[base_name]["status"] == "success":
-                        successful_base_models[base_name] = base_model
-                
-                if successful_base_models:
-                    logger.info(f"Setting {len(successful_base_models)} base models for {model_name}")
-                    # EnsembleStackingModel has set_base_models method
-                    if hasattr(model, 'set_base_models') and callable(getattr(model, 'set_base_models')):
-                        model.set_base_models(successful_base_models)
-                    # EnsembleModel takes base_models directly
-                    elif model_name == "EnsembleModel":
-                        # Convert dictionary to list for EnsembleModel
-                        model.base_models = list(successful_base_models.values())
-                        logger.info(f"Set base models list for {model_name}")
-                else:
-                    logger.warning(f"No successful base models available for {model_name}")
-            
-            # Train the ensemble model
+            # Train with checkpointing
             start_time = time.time()
-            model.train(X, y)
+            model, success = train_with_checkpointing(model_name, model, X, y)
             training_time = time.time() - start_time
             
-            # Evaluate the model
-            try:
-                metrics = model.evaluate(X, y)
-            except TypeError as e:
-                # If evaluate method doesn't accept parameters, use the default implementation
-                logger.warning(f"Model evaluate() method doesn't accept parameters: {str(e)}")
-                metrics = {"warning": "Model evaluation skipped due to interface mismatch"}
+            if success:
+                trained_models[model_name] = model
+                results[model_name] = {
+                    "status": "success",
+                    "training_time": training_time
+                }
                 
-            # Save the model
-            try:
-                if hasattr(model, 'save') and callable(getattr(model, 'save')):
-                    model.save()
+                # Evaluate the model
+                if hasattr(model, "evaluate"):
+                    try:
+                        metrics = model.evaluate(X, y)
+                        results[model_name]["metrics"] = metrics
+                    except Exception as e:
+                        logger.warning(f"Error evaluating {model_name}: {str(e)}")
+                
+                # Save model if it has a save method
+                if hasattr(model, "save") and callable(model.save):
+                    try:
+                        model.save()
+                    except Exception as e:
+                        logger.warning(f"Error saving {model_name}: {str(e)}")
                 else:
                     logger.warning(f"{model_name} does not have a save method, skipping persistence")
-            except Exception as e:
-                logger.error(f"Error saving {model_name}: {str(e)}")
-            
-            # Record results
-            results[model_name] = {
-                "status": "success",
-                "training_time": training_time,
-                "metrics": metrics
-            }
-            
-            logger.info(f"Successfully trained {model_name} in {training_time:.2f} seconds")
-            logger.info(f"Metrics: {metrics}")
+                    
+                logger.info(f"Successfully trained {model_name} in {training_time:.2f} seconds")
+            else:
+                results[model_name] = {
+                    "status": "error",
+                    "error": "Failed to train model"
+                }
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
             results[model_name] = {
                 "status": "error",
-                "message": str(e)
+                "error": str(e)
             }
     
     # Save training results
@@ -429,7 +480,22 @@ def load_feature_data(use_enhanced_features=True, historical_days=30):
         if file_age_days < 1:
             try:
                 logger.info(f"Loading existing feature data from {feature_path}")
-                return pd.read_csv(feature_path)
+                features_df = pd.read_csv(feature_path)
+                
+                # Validate the loaded feature data
+                validation_results = validate_training_data(features_df)
+                if validation_results["status"] == "error":
+                    logger.warning("Feature data failed validation, regenerating features")
+                else:
+                    # Check for feature drift against historical stats
+                    drift_detected, drift_report = check_feature_drift(features_df)
+                    if drift_detected:
+                        logger.warning("Feature drift detected, proceeding with caution")
+                    
+                    # Handle outliers in the feature data
+                    features_df = detect_and_handle_outliers(features_df)
+                    
+                    return features_df
             except Exception as e:
                 logger.error(f"Error loading feature data: {str(e)}")
     
@@ -460,6 +526,21 @@ def load_feature_data(use_enhanced_features=True, historical_days=30):
             feature_engineer = FeatureEngineer(lookback_days=historical_days)
             
         features_df = feature_engineer.engineer_features(game_df)
+        
+        # Validate the newly generated feature data
+        validation_results = validate_training_data(features_df)
+        if validation_results["status"] == "error":
+            logger.error("Newly generated feature data failed validation")
+            if not features_df.empty:
+                logger.warning("Proceeding with caution despite validation errors")
+            else:
+                return pd.DataFrame()
+        
+        # Handle outliers in the feature data
+        features_df = detect_and_handle_outliers(features_df)
+        
+        # Update feature drift baseline with the new data
+        _, _ = check_feature_drift(features_df)
         
         # Save features to CSV
         os.makedirs(os.path.dirname(feature_path), exist_ok=True)

@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional, Union, Tuple
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import pandas as pd
 
 # Import API clients
 from src.api.balldontlie_client import BallDontLieClient
@@ -403,6 +404,61 @@ class HistoricalDataCollector:
             
         return result
     
+    def collect_data_for_multiple_seasons(self, seasons: List[str], include_stats: bool = True,
+                                 include_odds: bool = True) -> Dict[str, Any]:
+        """
+        Collect comprehensive NBA data from multiple seasons for more robust model training
+        
+        Args:
+            seasons: List of season years to collect (e.g., ["2022", "2023", "2024"])
+            include_stats: Whether to collect detailed stats for each game
+            include_odds: Whether to collect betting odds (requires The Odds API key)
+            
+        Returns:
+            Dict with collection summary statistics
+        """
+        logger.info(f"Collecting data for multiple NBA seasons: {seasons}")
+        
+        results = {}
+        total_games = 0
+        failed_seasons = []
+        
+        # Process each season sequentially
+        for season in seasons:
+            try:
+                logger.info(f"Processing season {season}...")
+                season_result = self.collect_data_for_season(
+                    season=season,
+                    include_stats=include_stats,
+                    include_odds=include_odds
+                )
+                
+                # Add to overall results
+                results[season] = season_result
+                if isinstance(season_result, dict) and 'games_collected' in season_result:
+                    total_games += season_result['games_collected']
+                elif isinstance(season_result, dict) and 'games' in season_result:
+                    total_games += season_result['games']
+                    
+                logger.info(f"Successfully collected data for season {season}")
+                
+                # Add a small delay between seasons to avoid overwhelming APIs
+                time.sleep(2)
+                
+            except Exception as e:
+                logger.error(f"Failed to collect data for season {season}: {str(e)}")
+                failed_seasons.append(season)
+        
+        # Return overall summary
+        return {
+            "seasons_collected": len(seasons) - len(failed_seasons),
+            "seasons_failed": failed_seasons,
+            "total_games": total_games,
+            "teams": len(self.teams_cache),
+            "players": len(self.players_cache),
+            "season_details": results
+        }
+    
     def load_collected_data(self) -> Dict[str, Any]:
         """Load all collected data for analysis"""
         logger.info("Loading collected historical data")
@@ -446,6 +502,89 @@ class HistoricalDataCollector:
             "player_cache_size": len(self.players_cache),
             "game_cache_size": len(self.games_cache)
         }
+    
+    def get_games_by_date_range(self, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        Get games within a specific date range, either from cache or by fetching from API
+        
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            
+        Returns:
+            DataFrame containing all games in the date range
+        """
+        logger.info(f"Getting games from {start_date} to {end_date}")
+        
+        try:
+            # First try to load from cache
+            games = []
+            cache_file = self.games_dir / f"games_{start_date}_to_{end_date}.json"
+            
+            if cache_file.exists():
+                logger.info(f"Loading games from cache: {cache_file}")
+                with cache_file.open('r') as f:
+                    games = json.load(f)
+            else:
+                # If not in cache, collect from API
+                logger.info(f"Games not in cache, collecting from API")
+                games = self.collect_games_for_date_range(start_date, end_date)
+            
+            # Convert to DataFrame
+            if not games:
+                logger.warning(f"No games found for date range {start_date} to {end_date}")
+                return pd.DataFrame()
+            
+            # Extract relevant game information
+            game_data = []
+            for game in games:
+                if isinstance(game, dict):
+                    try:
+                        game_id = game.get('id')
+                        date = game.get('date', '').split('T')[0]  # Extract just the date part
+                        home_team = game.get('home_team', {}).get('name', '')
+                        home_team_id = game.get('home_team', {}).get('id', 0)
+                        home_score = game.get('home_team_score', 0)
+                        away_team = game.get('visitor_team', {}).get('name', '')
+                        away_team_id = game.get('visitor_team', {}).get('id', 0)
+                        away_score = game.get('visitor_team_score', 0)
+                        period = game.get('period', 0)
+                        status = game.get('status', '')
+                        time = game.get('time', '')
+                        postseason = game.get('postseason', False)
+                        
+                        # Determine winner
+                        home_won = None
+                        if status.lower() == 'final' and home_score != away_score:
+                            home_won = home_score > away_score
+                            
+                        game_data.append({
+                            'game_id': game_id,
+                            'date': date,
+                            'home_team': home_team,
+                            'home_team_id': home_team_id,
+                            'home_score': home_score,
+                            'away_team': away_team,
+                            'away_team_id': away_team_id,
+                            'away_score': away_score,
+                            'period': period,
+                            'status': status,
+                            'time': time,
+                            'postseason': postseason,
+                            'home_won': home_won
+                        })
+                    except Exception as e:
+                        logger.error(f"Error processing game {game.get('id', 'unknown')}: {str(e)}")
+                        continue
+            
+            # Create DataFrame
+            games_df = pd.DataFrame(game_data)
+            logger.info(f"Returning {len(games_df)} games from {start_date} to {end_date}")
+            return games_df
+            
+        except Exception as e:
+            logger.error(f"Error getting games by date range: {str(e)}")
+            return pd.DataFrame()
 
 
 # Main function for testing
