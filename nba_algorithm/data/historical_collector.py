@@ -22,7 +22,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import traceback
 
-# Import API clients
+# Fix API client imports with proper path handling
+import sys
+import os
+
+# Add project root to path if needed
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import API clients with absolute imports
 from src.api.balldontlie_client import BallDontLieClient
 from src.api.theodds_client import TheOddsClient
 

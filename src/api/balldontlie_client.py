@@ -30,6 +30,14 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union, Any, Tuple
 
+import sys
+import os
+
+# Add project root to path if needed
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from src.api.base_client import BaseAPIClient, APIError
 from config.api_keys import get_api_key
 
