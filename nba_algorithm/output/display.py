@@ -316,6 +316,28 @@ def display_game_prediction(game_data):
         except Exception as e:
             logger.warning(f"Error displaying detailed advanced metrics: {str(e)}")
     
+    # NEW: Display team momentum and matchup history if available
+    if 'home_win_momentum' in game_data or 'home_matchup_win_pct' in game_data:
+        print("\nADVANCED ANALYTICS:")
+        
+        # Show momentum metrics
+        if 'home_win_momentum' in game_data and 'away_win_momentum' in game_data:
+            home_momentum = game_data.get('home_win_momentum', 0)
+            away_momentum = game_data.get('away_win_momentum', 0)
+            momentum_diff = home_momentum - away_momentum
+            advantage = home_team if momentum_diff > 0 else visitor_team
+            print(f"• Recent Performance Momentum: {advantage} has stronger momentum")
+            print(f"  {home_team}: {home_momentum:.2f} | {visitor_team}: {away_momentum:.2f}")
+        
+        # Show matchup history metrics
+        if 'matchup_games_count' in game_data and game_data.get('matchup_games_count', 0) > 0:
+            matchup_count = game_data.get('matchup_games_count', 0)
+            h2h_win_pct = game_data.get('home_matchup_win_pct', 0.5) * 100
+            point_diff = game_data.get('avg_matchup_point_diff', 0)
+            advantage = home_team if h2h_win_pct > 50 else visitor_team
+            print(f"• Matchup History ({matchup_count} games): {advantage} has historical advantage")
+            print(f"  {home_team} H2H Win Rate: {h2h_win_pct:.0f}% | Avg. Point Diff: {point_diff:+.1f}")
+    
     # Display spread prediction
     spread_pred = game_data.get('spread_prediction', {})
     spread = spread_pred.get('predicted_spread', 0.0)
@@ -547,6 +569,14 @@ def display_prediction_methodology(prediction_data):
     print("\nDATA SOURCES:")
     for source in methodology.get('data_sources', []):
         print(f"• {source}")
+    
+    # Include advanced feature information in methodology
+    print("\nADVANCED FEATURES:")
+    print("• Four-Season Rolling Window: Maintains relevant historical context while adapting to league changes")
+    print("• Exponentially Weighted Recent Performance: Captures team momentum with time decay")
+    print("• Matchup-Specific History: Analyzes historical team-vs-team performance patterns")
+    print("• Injury Impact Analysis: Quantifies the effect of missing players on team performance")
+    print("• Team Efficiency Metrics: Advanced offensive and defensive analytics")
     
     # Performance metrics
     print("\nBETTING PERFORMANCE METRICS:")

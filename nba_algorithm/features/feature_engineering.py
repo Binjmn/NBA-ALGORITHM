@@ -18,12 +18,19 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# Update imports for the new module locations
+# Import modules from models directory
 from ..models.injury_analysis import get_team_injury_data, compare_team_injuries
 from ..models.advanced_metrics import (
     fetch_team_advanced_metrics, 
     fetch_player_advanced_metrics,
     get_team_efficiency_comparison
+)
+
+# Import advanced feature engineering
+from .advanced_features import (
+    create_momentum_features,
+    create_matchup_features,
+    integrate_advanced_features
 )
 
 # Configure logger
@@ -144,6 +151,40 @@ def prepare_game_features(games: List[Dict], team_stats: Dict, odds: Dict, histo
                         'overall_differential': 0.0
                     }
                 
+                # Generate advanced momentum features for both teams
+                try:
+                    home_momentum_features = create_momentum_features(
+                        historical_games, home_id, decay_factor=0.85, window_size=10
+                    ) if historical_games else {}
+                    
+                    away_momentum_features = create_momentum_features(
+                        historical_games, visitor_id, decay_factor=0.85, window_size=10
+                    ) if historical_games else {}
+                    
+                    if home_momentum_features and 'win_momentum' in home_momentum_features:
+                        logger.info(f"Home team {home_team.get('full_name')} momentum: {home_momentum_features.get('win_momentum', 0):.2f}")
+                    
+                    if away_momentum_features and 'win_momentum' in away_momentum_features:
+                        logger.info(f"Away team {visitor_team.get('full_name')} momentum: {away_momentum_features.get('win_momentum', 0):.2f}")
+                except Exception as e:
+                    logger.warning(f"Error calculating momentum features: {str(e)}. Continuing without momentum features.")
+                    home_momentum_features = {}
+                    away_momentum_features = {}
+                
+                # Generate matchup-specific historical features
+                try:
+                    matchup_features = create_matchup_features(
+                        historical_games, home_id, visitor_id, max_years_back=4
+                    ) if historical_games else {}
+                    
+                    if matchup_features and matchup_features.get('matchup_games_count', 0) > 0:
+                        logger.info(f"Historical matchup: {home_team.get('full_name')} vs {visitor_team.get('full_name')} - "
+                                   f"Home win rate: {matchup_features.get('home_win_pct', 0):.2f}, "
+                                   f"Avg point diff: {matchup_features.get('avg_point_diff', 0):.1f}")
+                except Exception as e:
+                    logger.warning(f"Error calculating matchup features: {str(e)}. Continuing without matchup features.")
+                    matchup_features = {}
+                
                 # Assemble feature dictionary
                 game_features = {
                     # Game metadata
@@ -234,6 +275,19 @@ def prepare_game_features(games: List[Dict], team_stats: Dict, odds: Dict, histo
                     "offensive_differential": efficiency_comparison['offensive_differential'],
                     "defensive_differential": efficiency_comparison['defensive_differential'],
                     "overall_differential": efficiency_comparison['overall_differential']
+                })
+                
+                # Add momentum features
+                game_features.update({
+                    "home_win_momentum": home_momentum_features.get("win_momentum", 0),
+                    "away_win_momentum": away_momentum_features.get("win_momentum", 0)
+                })
+                
+                # Add matchup features
+                game_features.update({
+                    "matchup_games_count": matchup_features.get("matchup_games_count", 0),
+                    "home_matchup_win_pct": matchup_features.get("home_win_pct", 0),
+                    "avg_matchup_point_diff": matchup_features.get("avg_point_diff", 0)
                 })
                 
                 # Add derived features
