@@ -144,12 +144,14 @@ class NBAFeatureEngineer:
         team_games = team_games.sort_values('game_date', ascending=False).head(window)
         
         if team_games.empty:
+            logger.warning(f"No recent games found for team ID {team_id}. Unable to calculate team form metrics.")
             return {
-                'recent_win_pct': 0.5,  # Default to 50% if no data
-                'avg_points_scored': 0,
-                'avg_points_allowed': 0,
-                'win_streak': 0,
-                'games_played': 0
+                'recent_win_pct': None,  
+                'avg_points_scored': None,
+                'avg_points_allowed': None,
+                'win_streak': None,
+                'games_played': 0,
+                'data_quality': 'missing'  
             }
         
         # Initialize metrics
@@ -203,10 +205,12 @@ class NBAFeatureEngineer:
         h2h_games = h2h_games.sort_values('game_date', ascending=False).head(window)
         
         if h2h_games.empty:
+            logger.warning(f"No head-to-head games found between teams {home_id} and {away_id}. Unable to calculate head-to-head metrics.")
             return {
-                'h2h_home_win_pct': 0.5,  # Default to 50% if no data
+                'h2h_home_win_pct': None,  
                 'h2h_games_played': 0,
-                'avg_point_diff': 0
+                'avg_point_diff': None,
+                'data_quality': 'missing'  
             }
         
         # Initialize metrics
@@ -240,14 +244,22 @@ class NBAFeatureEngineer:
             'avg_point_diff': avg_point_diff
         }
     
-    def calculate_rest_days(self, df: pd.DataFrame, team_id: str, game_date: pd.Timestamp) -> int:
-        """Calculate rest days for a team before a game"""
+    def calculate_rest_days(self, df: pd.DataFrame, team_id: str, game_date: pd.Timestamp) -> dict:
+        """Calculate rest days for a team before a game
+        
+        Returns:
+            dict: Contains rest days and data quality information
+        """
         # Find the most recent game before game_date
         prev_games = df[(df['game_date'] < game_date) & 
                        ((df['home_team_id'] == team_id) | (df['away_team_id'] == team_id))]
         
         if prev_games.empty:
-            return 3  # Default to 3 days of rest if no previous game found
+            logger.warning(f"No previous games found for team {team_id} before {game_date}. Unable to calculate rest days.")
+            return {
+                'rest_days': None,  # No default, explicitly mark as missing
+                'data_quality': 'missing'  # Add data quality flag
+            }
         
         # Get the most recent game
         last_game_date = prev_games['game_date'].max()
@@ -255,7 +267,10 @@ class NBAFeatureEngineer:
         # Calculate days difference
         rest_days = (game_date - last_game_date).days
         
-        return rest_days
+        return {
+            'rest_days': rest_days,
+            'data_quality': 'complete'
+        }
     
     def create_game_features(self, df: pd.DataFrame, game_id: str) -> Dict[str, Any]:
         """Create comprehensive features for a specific game"""
@@ -301,7 +316,8 @@ class NBAFeatureEngineer:
             'home_avg_points_allowed': home_form['avg_points_allowed'],
             'home_win_streak': home_form['win_streak'],
             'home_games_played': home_form['games_played'],
-            'home_rest_days': home_rest_days,
+            'home_rest_days': home_rest_days['rest_days'],
+            'home_rest_days_data_quality': home_rest_days['data_quality'],
             
             # Away team metrics
             'away_recent_win_pct': away_form['recent_win_pct'],
@@ -309,7 +325,8 @@ class NBAFeatureEngineer:
             'away_avg_points_allowed': away_form['avg_points_allowed'],
             'away_win_streak': away_form['win_streak'],
             'away_games_played': away_form['games_played'],
-            'away_rest_days': away_rest_days,
+            'away_rest_days': away_rest_days['rest_days'],
+            'away_rest_days_data_quality': away_rest_days['data_quality'],
             
             # Head-to-head metrics
             'h2h_home_win_pct': h2h_metrics['h2h_home_win_pct'],
@@ -320,7 +337,7 @@ class NBAFeatureEngineer:
             'win_pct_diff': home_form['recent_win_pct'] - away_form['recent_win_pct'],
             'scoring_diff': home_form['avg_points_scored'] - away_form['avg_points_scored'],
             'defense_diff': away_form['avg_points_allowed'] - home_form['avg_points_allowed'],
-            'rest_diff': home_rest_days - away_rest_days,
+            'rest_diff': home_rest_days['rest_days'] - away_rest_days['rest_days'],
             
             # Home court advantage (can be tuned based on historical analysis)
             'home_court_advantage': 3.0

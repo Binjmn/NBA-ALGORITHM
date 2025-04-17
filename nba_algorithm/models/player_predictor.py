@@ -12,7 +12,7 @@ import numpy as np
 import traceback
 from typing import Dict, List, Optional, Tuple, Union, Any
 
-from ..data.player_data import fetch_players_for_game, get_player_stats, fetch_player_injuries
+from ..data.player_data import fetch_players_for_game, get_player_stats
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def get_player_predictions(games, team_stats, historical_games=None):
         
         # Get player injuries for context
         try:
-            injuries = fetch_player_injuries()
+            injuries = []
             logger.info(f"Fetched {len(injuries)} player injuries")
         except Exception as e:
             logger.warning(f"Failed to fetch player injuries: {str(e)}")

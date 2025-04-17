@@ -25,9 +25,12 @@ import sys
 import ast
 
 # Add project root to path to facilitate imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
+# Now import from project root
 from src.api.balldontlie_client import BallDontLieClient
+from config.api_keys import get_api_key
 
 # Configure logging
 log_dir = Path("logs")

@@ -1,0 +1,3 @@
+game_id,home_team_id,away_team_id,date,home_team_name,away_team_name,home_games_played,away_games_played,home_win_rate,away_win_rate,win_rate_diff,home_avg_points,away_avg_points,home_avg_points_allowed,away_avg_points_allowed,point_diff,EnsembleStacking_pred,EnsembleStacking_home_win_proba
+18423164,1,16,2025-04-18,Hawks,Heat,6,7,0.6666666666666666,0.7142857142857143,-0.04761904761904767,126.83333333333333,115.0,117.16666666666667,101.42857142857143,27.57142857142857,0.5,0.5
+18423251,15,7,2025-04-18,Grizzlies,Mavericks,6,6,0.16666666666666666,0.6666666666666666,-0.5,113.5,118.0,120.33333333333333,115.33333333333333,0.5,0.5,0.5

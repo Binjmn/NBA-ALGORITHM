@@ -58,6 +58,7 @@ from src.models.base_model import BaseModel
 # Import SeasonManager for automatic season detection
 from src.utils.season_manager import SeasonManager
 from src.utils.model_registry import ModelRegistry, promote_best_models_to_production
+from src.utils.feature_evolution import FeatureEvolution
 
 # Set up logging
 log_dir = Path("logs")
@@ -196,13 +197,19 @@ def engineer_training_features() -> bool:
         return False
 
 
-def train_all_models() -> Dict[str, Any]:
+def train_all_models(force_retrain=False) -> Dict[str, Any]:
     """
     Train all available prediction models including enhanced player prop prediction models
     
     Returns:
         Dict[str, Any]: Dictionary with training results for each model
     """
+    from pathlib import Path
+    
+    # Initialize model registry and feature evolution
+    model_registry = ModelRegistry()
+    feature_evolution = FeatureEvolution()
+    
     logger.info("Starting comprehensive model training")
     
     results = {}
@@ -413,101 +420,58 @@ def train_all_models() -> Dict[str, Any]:
             }
             logger.error(f"Error training {model_name}: {res.get('error', 'Unknown error')}")
     
-    # Train player prop models if we have the data
+    # Train player props models if we have the data
     if player_prop_training_ready:
         logger.info("Training player prop prediction models")
-        prop_trained_models = {}
-        
-        # Configure and train each prop model
-        for model_name, model in player_prop_models.items():
-            prop_type = ""
+        try:
+            import sys
+            import os
+            from pathlib import Path
             
-            if "Points" in model_name:
-                prop_type = "points"
-            elif "Assists" in model_name:
-                prop_type = "assists"
-                # Configure RandomForest for assists prediction
-                if hasattr(model, 'train_for_player_props'):
-                    X_prop, y_prop = data_splits.get(prop_type, (None, None))
-                    if X_prop is not None and y_prop is not None:
-                        try:
-                            logger.info(f"Training {model_name} for {prop_type} prediction")
-                            start_time = time.time()
-                            model.train_for_player_props(X_prop, y_prop, prop_type=prop_type)
-                            duration = time.time() - start_time
-                            
-                            prop_trained_models[model_name] = model
-                            results[model_name] = {
-                                "status": "success",
-                                "training_time": duration,
-                                "prop_type": prop_type
-                            }
-                            
-                            # Save the model
-                            if hasattr(model, "save") and callable(model.save):
-                                model_path = model.save()
-                                results[model_name]["model_path"] = model_path
-                                logger.info(f"Saved {model_name} to {model_path}")
-                                
-                            logger.info(f"Successfully trained {model_name} for {prop_type} in {duration:.2f} seconds")
-                        except Exception as e:
-                            logger.error(f"Error training {model_name} for {prop_type}: {str(e)}")
-                            results[model_name] = {
-                                "status": "error",
-                                "error": str(e),
-                                "prop_type": prop_type
-                            }
-                else:
-                    logger.warning(f"{model_name} does not support player prop training method")
-            elif "Rebounds" in model_name:
-                prop_type = "rebounds"
+            # Add project root to path if needed
+            project_root = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+                
+            # Import functions from the scripts module
+            from scripts.train_player_props import collect_player_data, process_player_data, engineer_features, train_prop_models, validate_prop_models
             
-            # If we haven't trained with the specialized method, use standard training
-            if model_name not in prop_trained_models and prop_type:
-                X_prop, y_prop = data_splits.get(prop_type, (None, None))
-                if X_prop is not None and y_prop is not None:
-                    try:
-                        logger.info(f"Training {model_name} for {prop_type} prediction")
-                        start_time = time.time()
-                        
-                        # For GradientBoostingModel, set prediction_target
-                        if hasattr(model, 'prediction_target'):
-                            model.prediction_target = prop_type
-                        
-                        # Use regression training for props
-                        if hasattr(model, 'train'):
-                            model.train(X_prop, y_prop, task='regression')
-                        else:
-                            model.fit(X_prop, y_prop)
-                            
-                        duration = time.time() - start_time
-                        
-                        prop_trained_models[model_name] = model
-                        results[model_name] = {
-                            "status": "success",
-                            "training_time": duration,
-                            "prop_type": prop_type
-                        }
-                        
-                        # Save the model
-                        if hasattr(model, "save") and callable(model.save):
-                            model_path = model.save()
-                            results[model_name]["model_path"] = model_path
-                            logger.info(f"Saved {model_name} to {model_path}")
-                            
-                        logger.info(f"Successfully trained {model_name} for {prop_type} in {duration:.2f} seconds")
-                    except Exception as e:
-                        logger.error(f"Error training {model_name} for {prop_type}: {str(e)}")
-                        results[model_name] = {
-                            "status": "error",
-                            "error": str(e),
-                            "prop_type": prop_type
-                        }
-        
-        # Add prop models to the trained models dictionary
-        trained_models.update(prop_trained_models)
-    else:
-        logger.warning("Skipping player prop model training due to missing player stats data")
+            # Create a simple args object for player props functions that expect it
+            class PlayerPropsArgs:
+                def __init__(self):
+                    self.force_collection = args.force_collection
+                    self.days_back = args.player_props_days_back
+                    self.test_size = 0.2
+                    self.random_state = 42
+                    self.output_dir = "models/player_props"
+                    
+            player_props_args = PlayerPropsArgs()
+            
+            # Collect player data
+            logger.info("Collecting player data for props models")
+            player_data = collect_player_data(player_props_args)
+            
+            if player_data is not None and not player_data.empty:
+                # Process player data
+                processed_data = process_player_data(player_data)
+                
+                # Engineer features
+                feature_sets = engineer_features(processed_data)
+                
+                # Train models
+                player_props_results = train_prop_models(feature_sets, player_props_args)
+                
+                # Include player props results in overall results
+                results["player_props"] = player_props_results
+                logger.info("Successfully trained player props models")
+            else:
+                logger.warning("No player data available for player props training")
+                results["player_props"] = {"status": "error", "message": "No player data available"}
+        except Exception as e:
+            logger.error(f"Player props training failed: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            results["player_props"] = {"status": "error", "message": str(e)}
     
     # Analyze feature importance from trained models
     if trained_models:
@@ -603,6 +567,88 @@ def train_all_models() -> Dict[str, Any]:
     }
     
     return results
+
+
+def train_moneyline_models(force_retrain=False, model_registry=None, feature_evolution=None):
+    """Train moneyline models."""
+    logging.info("Training moneyline models")
+    
+    if model_registry is None:
+        model_registry = ModelRegistry()
+    
+    if feature_evolution is None:
+        feature_evolution = FeatureEvolution()
+    
+    # Get data
+    data = get_training_data_moneyline()
+    
+    # Use feature evolution to get optimal features if data is available
+    if not data.empty:
+        try:
+            optimal_features = feature_evolution.select_optimal_features(
+                data=data.drop(columns=['result']),
+                target=data['result'],
+                prediction_type="moneyline",
+                is_classification=True
+            )
+            logging.info(f"Using {len(optimal_features)} optimal features for moneyline model")
+        except Exception as e:
+            logging.error(f"Error selecting optimal features: {str(e)}")
+            # Fall back to production or base features
+            optimal_features = feature_evolution.get_production_feature_set("moneyline")
+    else:
+        logging.warning("No data available for feature selection, using base features")
+        optimal_features = feature_evolution.base_features.get("moneyline", [])
+    
+    # Train random forest model
+    rf_model = RandomForestModel()
+    
+    try:
+        # Filter data to include only optimal features
+        available_features = [f for f in optimal_features if f in data.columns]
+        if not available_features:
+            logging.warning("None of the optimal features are available in the data")
+            # Use all numeric features as fallback
+            available_features = data.select_dtypes(include=['number']).columns.tolist()
+            if 'result' in available_features:
+                available_features.remove('result')
+                
+        X = data[available_features]
+        y = data['result']
+        
+        # Train the model
+        rf_model.train(X, y)
+        
+        # Evaluate model performance
+        metrics = evaluate_model(rf_model, X, y, task='classification')
+        
+        # Register the model with its optimal feature set
+        model_version = datetime.now().strftime("%Y%m%d%H%M%S")
+        model_path = f"models/moneyline_rf_{model_version}.pkl"
+        
+        # Save the model
+        rf_model.save(model_path)
+        
+        # Register with model registry
+        model_registry.register_model(
+            model_name="moneyline_rf",
+            model_type="moneyline",
+            version=model_version,
+            model_path=model_path,
+            metrics=metrics,
+            metadata={
+                "features": available_features,
+                "samples": len(X)
+            },
+            register_as_production=True  # Use as production model
+        )
+        
+        logging.info(f"Moneyline model trained and registered with version {model_version}")
+    except Exception as e:
+        logging.error(f"Error training moneyline model: {str(e)}")
+        traceback.print_exc()
+    
+    return rf_model
 
 
 def load_feature_data(use_enhanced_features=True, historical_days=30):
@@ -838,6 +884,59 @@ def run_training_pipeline(args: argparse.Namespace) -> bool:
         logger.error(f"All model training failed: {results.get('message', 'Unknown error')}")
         return False
     
+    # Train player props models if requested
+    if args.include_player_props:
+        logger.info("Starting player props model training")
+        try:
+            import sys
+            import os
+            from pathlib import Path
+            
+            # Add project root to path if needed
+            project_root = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            if str(project_root) not in sys.path:
+                sys.path.insert(0, str(project_root))
+                
+            # Import the player props training module
+            from scripts.train_player_props import collect_player_data, process_player_data, engineer_features, train_prop_models, validate_prop_models
+            
+            # Create a simple args object for player props functions that expect it
+            class PlayerPropsArgs:
+                def __init__(self):
+                    self.force_collection = args.force_collection
+                    self.days_back = args.player_props_days_back
+                    self.test_size = 0.2
+                    self.random_state = 42
+                    self.output_dir = "models/player_props"
+                    
+            player_props_args = PlayerPropsArgs()
+            
+            # Collect player data
+            logger.info("Collecting player data for props models")
+            player_data = collect_player_data(player_props_args)
+            
+            if player_data is not None and not player_data.empty:
+                # Process player data
+                processed_data = process_player_data(player_data)
+                
+                # Engineer features
+                feature_sets = engineer_features(processed_data)
+                
+                # Train models
+                player_props_results = train_prop_models(feature_sets, player_props_args)
+                
+                # Include player props results in overall results
+                results["player_props"] = player_props_results
+                logger.info("Successfully trained player props models")
+            else:
+                logger.warning("No player data available for player props training")
+                results["player_props"] = {"status": "error", "message": "No player data available"}
+        except Exception as e:
+            logger.error(f"Player props training failed: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            results["player_props"] = {"status": "error", "message": str(e)}
+    
     # Deploy models
     if not args.skip_deployment:
         deploy_success = deploy_models(results)
@@ -866,6 +965,8 @@ def main():
     parser.add_argument("--prediction-type", type=str, default="moneyline", 
                        choices=["moneyline", "spread", "totals"], help="Type of prediction to train for")
     parser.add_argument("--models", type=str, nargs="+", help="Specific models to train")
+    parser.add_argument("--include-player-props", action="store_true", help="Include player props model training")
+    parser.add_argument("--player-props-days-back", type=int, default=30, help="Number of days of player data to use for props models")
     
     args = parser.parse_args()
     

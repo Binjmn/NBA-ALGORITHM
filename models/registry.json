@@ -1,49 +1,5 @@
 {
   "models": {
-    "Bayesian_default_20250416_160403_v1": {
-      "id": "Bayesian_default_20250416_160403_v1",
-      "type": "Bayesian",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\Bayesian_20250416_160403_v1.pkl",
-      "created_at": "2025-04-16T16:04:03",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "Bayesian_default_20250416_160721_v1": {
-      "id": "Bayesian_default_20250416_160721_v1",
-      "type": "Bayesian",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\Bayesian_20250416_160721_v1.pkl",
-      "created_at": "2025-04-16T16:07:21",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "Bayesian_default_20250416_161526_v1": {
-      "id": "Bayesian_default_20250416_161526_v1",
-      "type": "Bayesian",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\Bayesian_20250416_161526_v1.pkl",
-      "created_at": "2025-04-16T16:15:26",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "Bayesian_default_20250416_180500_v1": {
-      "id": "Bayesian_default_20250416_180500_v1",
-      "type": "Bayesian",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\Bayesian_20250416_180500_v1.pkl",
-      "created_at": "2025-04-16T18:05:00",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
     "Bayesian_default_20250416_183800_v1": {
       "id": "Bayesian_default_20250416_183800_v1",
       "type": "Bayesian",
@@ -55,50 +11,6 @@
       "is_production": false,
       "status": "active"
     },
-    "CombinedGBM_default_20250416_160403_v1": {
-      "id": "CombinedGBM_default_20250416_160403_v1",
-      "type": "CombinedGBM",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\CombinedGBM_20250416_160403_v1.pkl",
-      "created_at": "2025-04-16T16:04:03",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "CombinedGBM_default_20250416_160721_v1": {
-      "id": "CombinedGBM_default_20250416_160721_v1",
-      "type": "CombinedGBM",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\CombinedGBM_20250416_160721_v1.pkl",
-      "created_at": "2025-04-16T16:07:21",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "CombinedGBM_default_20250416_161526_v1": {
-      "id": "CombinedGBM_default_20250416_161526_v1",
-      "type": "CombinedGBM",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\CombinedGBM_20250416_161526_v1.pkl",
-      "created_at": "2025-04-16T16:15:26",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "CombinedGBM_default_20250416_180500_v1": {
-      "id": "CombinedGBM_default_20250416_180500_v1",
-      "type": "CombinedGBM",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\CombinedGBM_20250416_180500_v1.pkl",
-      "created_at": "2025-04-16T18:05:00",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
     "CombinedGBM_default_20250416_183800_v1": {
       "id": "CombinedGBM_default_20250416_183800_v1",
       "type": "CombinedGBM",
@@ -106,61 +18,6 @@
       "version": 1,
       "file_path": "models\\CombinedGBM_20250416_183800_v1.pkl",
       "created_at": "2025-04-16T18:38:00",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "EnsembleStacking_default_20250416_161526_v1": {
-      "id": "EnsembleStacking_default_20250416_161526_v1",
-      "type": "EnsembleStacking",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\EnsembleStacking_20250416_161526_v1.pkl",
-      "created_at": "2025-04-16T16:15:26",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "EnsembleStacking_default_20250416_180515_v1": {
-      "id": "EnsembleStacking_default_20250416_180515_v1",
-      "type": "EnsembleStacking",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\EnsembleStacking_20250416_180515_v1.pkl",
-      "created_at": "2025-04-16T18:05:15",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "EnsembleStacking_default_20250416_180723_v1": {
-      "id": "EnsembleStacking_default_20250416_180723_v1",
-      "type": "EnsembleStacking",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\EnsembleStacking_20250416_180723_v1.pkl",
-      "created_at": "2025-04-16T18:07:23",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "EnsembleStacking_default_20250416_183815_v1": {
-      "id": "EnsembleStacking_default_20250416_183815_v1",
-      "type": "EnsembleStacking",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\EnsembleStacking_20250416_183815_v1.pkl",
-      "created_at": "2025-04-16T18:38:15",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
-    "EnsembleStacking_default_20250416_183959_v1": {
-      "id": "EnsembleStacking_default_20250416_183959_v1",
-      "type": "EnsembleStacking",
-      "task": "default",
-      "version": 1,
-      "file_path": "models\\EnsembleStacking_20250416_183959_v1.pkl",
-      "created_at": "2025-04-16T18:39:59",
       "metrics": {},
       "is_production": false,
       "status": "active"
@@ -253,17 +110,6 @@
       "is_production": false,
       "status": "active"
     },
-    "RandomForest_classification_20250416_180500_v1": {
-      "id": "RandomForest_classification_20250416_180500_v1",
-      "type": "RandomForest",
-      "task": "classification",
-      "version": 1,
-      "file_path": "models\\RandomForest_classification_20250416_180500_v1.pkl",
-      "created_at": "2025-04-16T18:05:00",
-      "metrics": {},
-      "is_production": false,
-      "status": "active"
-    },
     "RandomForest_classification_20250416_183800_v1": {
       "id": "RandomForest_classification_20250416_183800_v1",
       "type": "RandomForest",
@@ -274,9 +120,246 @@
       "metrics": {},
       "is_production": false,
       "status": "active"
+    },
+    "Bayesian_default_20250417_103737_v1": {
+      "id": "Bayesian_default_20250417_103737_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250417_103737_v1.pkl",
+      "created_at": "2025-04-17T10:37:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250417_103737_v1": {
+      "id": "CombinedGBM_default_20250417_103737_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250417_103737_v1.pkl",
+      "created_at": "2025-04-17T10:37:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250417_103737_v1": {
+      "id": "RandomForest_classification_20250417_103737_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250417_103737_v1.pkl",
+      "created_at": "2025-04-17T10:37:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250417_104021_v1": {
+      "id": "Bayesian_default_20250417_104021_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250417_104021_v1.pkl",
+      "created_at": "2025-04-17T10:40:21",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250417_104021_v1": {
+      "id": "CombinedGBM_default_20250417_104021_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250417_104021_v1.pkl",
+      "created_at": "2025-04-17T10:40:21",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250417_104217_v1": {
+      "id": "EnsembleStacking_default_20250417_104217_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250417_104217_v1.pkl",
+      "created_at": "2025-04-17T10:42:17",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250417_104021_v1": {
+      "id": "RandomForest_classification_20250417_104021_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250417_104021_v1.pkl",
+      "created_at": "2025-04-17T10:40:21",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250417_132537_v1": {
+      "id": "Bayesian_default_20250417_132537_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250417_132537_v1.pkl",
+      "created_at": "2025-04-17T13:25:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250417_132537_v1": {
+      "id": "CombinedGBM_default_20250417_132537_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250417_132537_v1.pkl",
+      "created_at": "2025-04-17T13:25:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250417_132553_v1": {
+      "id": "EnsembleStacking_default_20250417_132553_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250417_132553_v1.pkl",
+      "created_at": "2025-04-17T13:25:53",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250417_132748_v1": {
+      "id": "EnsembleStacking_default_20250417_132748_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250417_132748_v1.pkl",
+      "created_at": "2025-04-17T13:27:48",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250417_132537_v1": {
+      "id": "RandomForest_classification_20250417_132537_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250417_132537_v1.pkl",
+      "created_at": "2025-04-17T13:25:37",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250417_134732_v1": {
+      "id": "Bayesian_default_20250417_134732_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250417_134732_v1.pkl",
+      "created_at": "2025-04-17T13:47:32",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250417_134732_v1": {
+      "id": "CombinedGBM_default_20250417_134732_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250417_134732_v1.pkl",
+      "created_at": "2025-04-17T13:47:32",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250417_134747_v1": {
+      "id": "EnsembleStacking_default_20250417_134747_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250417_134747_v1.pkl",
+      "created_at": "2025-04-17T13:47:47",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250417_134933_v1": {
+      "id": "EnsembleStacking_default_20250417_134933_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250417_134933_v1.pkl",
+      "created_at": "2025-04-17T13:49:33",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250417_134732_v1": {
+      "id": "RandomForest_classification_20250417_134732_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250417_134732_v1.pkl",
+      "created_at": "2025-04-17T13:47:32",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
     }
   },
   "production": {},
-  "last_updated": "2025-04-16T18:39:59.875203",
-  "version": "1.0"
+  "last_updated": "2025-04-17T13:49:33.565804",
+  "version": "1.0",
+  "player_props": {
+    "points": {
+      "gradient_boost": {
+        "filename": "gradient_boost_points.pkl",
+        "path": "models\\gradient_boost_points.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    },
+    "rebounds": {
+      "gradient_boost": {
+        "filename": "gradient_boost_rebounds.pkl",
+        "path": "models\\gradient_boost_rebounds.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    },
+    "assists": {
+      "gradient_boost": {
+        "filename": "gradient_boost_assists.pkl",
+        "path": "models\\gradient_boost_assists.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    },
+    "threes": {
+      "gradient_boost": {
+        "filename": "gradient_boost_threes.pkl",
+        "path": "models\\gradient_boost_threes.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    },
+    "steals": {
+      "gradient_boost": {
+        "filename": "gradient_boost_steals.pkl",
+        "path": "models\\gradient_boost_steals.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    },
+    "blocks": {
+      "gradient_boost": {
+        "filename": "gradient_boost_blocks.pkl",
+        "path": "models\\gradient_boost_blocks.pkl",
+        "last_updated": "2025-04-17 11:44:56",
+        "version": "v1"
+      }
+    }
+  }
 }

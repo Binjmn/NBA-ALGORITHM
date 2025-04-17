@@ -10,9 +10,11 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Dict, List, Optional, Union, Tuple
+import logging
 
+logger = logging.getLogger(__name__)
 
-def create_prediction_schema(predictions_df, player_predictions_df=None, settings=None, betting_analyzer=None):
+def create_prediction_schema(predictions_df, player_predictions_df=None, settings=None, betting_analyzer=None, real_metrics=None):
     """
     Create a standardized prediction output schema
     
@@ -21,27 +23,42 @@ def create_prediction_schema(predictions_df, player_predictions_df=None, setting
         player_predictions_df: DataFrame of player predictions
         settings: Prediction settings object
         betting_analyzer: BettingAnalyzer instance
+        real_metrics: Dictionary of real performance metrics
         
     Returns:
         dict: Structured prediction data for display
+        
+    Raises:
+        ValueError: If required data is missing or invalid
     """
-    # Default values if None provided
-    if settings is None:
-        settings = {
-            'risk_level': 'moderate',
-            'bankroll': 1000.0,
-            'track_clv': False,
-            'default_date': datetime.now().strftime("%Y-%m-%d")
-        }
+    # Validate inputs
+    if predictions_df is None or predictions_df.empty:
+        raise ValueError("No prediction data provided. Unable to create display schema.")
     
-    # Initialize prediction data structure
+    # Extract date from predictions
+    prediction_date = None
+    if 'date' in predictions_df.columns:
+        prediction_date = predictions_df['date'].iloc[0]
+    
+    # If no date in predictions, use current date
+    if not prediction_date:
+        prediction_date = datetime.now().strftime("%Y-%m-%d")
+        logger.info(f"Using current date for prediction output: {prediction_date}")
+    
+    # Use fixed bankroll value and risk level
+    risk_level = 'moderate'
+    bankroll = 1000.0  # Fixed standard bankroll value for all predictions
+    track_clv = True  # Always track closing line value
+    
+    default_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Initialize prediction data structure with validated values
     prediction_data = {
-        "date": predictions_df['date'].iloc[0] if not predictions_df.empty and 'date' in predictions_df.columns 
-                else settings.get('default_date', datetime.now().strftime("%Y-%m-%d")),
+        "date": prediction_date,
         "generation_time": datetime.now().strftime("%I:%M %p ET"),
         "settings": {
-            "risk_level": settings.get('risk_level', 'moderate'),
-            "bankroll": settings.get('bankroll', 1000.0),
+            "risk_level": risk_level,
+            "bankroll": bankroll,
         },
         "games": [],
         "methodology": {
@@ -67,14 +84,14 @@ def create_prediction_schema(predictions_df, player_predictions_df=None, setting
     
     # Add performance metrics
     prediction_data["methodology"]["performance_metrics"] = {
-        "win_prediction_accuracy": 0.64,  # Placeholder, should be calculated from actual data
-        "spread_accuracy": 0.54,
-        "total_accuracy": 0.53,
-        "player_prop_accuracy": 0.59
+        "win_prediction_accuracy": real_metrics.get("win_prediction_accuracy", 0.0),
+        "spread_accuracy": real_metrics.get("spread_accuracy", 0.0),
+        "total_accuracy": real_metrics.get("total_accuracy", 0.0),
+        "player_prop_accuracy": real_metrics.get("player_prop_accuracy", 0.0)
     }
     
     # Add CLV metrics if tracking is enabled
-    if settings.get('track_clv', False) and betting_analyzer and betting_analyzer.clv_tracker:
+    if track_clv and betting_analyzer and betting_analyzer.clv_tracker:
         clv_stats = betting_analyzer.clv_tracker.get_clv_stats()
         prediction_data["methodology"]["clv_metrics"] = {
             "positive_clv_rate": clv_stats.get('positive_clv_rate', 0.0),
@@ -163,13 +180,15 @@ def create_prediction_schema(predictions_df, player_predictions_df=None, setting
                         player_data = {
                             "player_id": player.get('player_id', ''),
                             "player_name": player.get('player_name', ''),
-                            "team": player.get('team_name', ''),
-                            "predictions": {
-                                "points": float(player.get('predicted_points', 0.0)),
-                                "rebounds": float(player.get('predicted_rebounds', 0.0)),
-                                "assists": float(player.get('predicted_assists', 0.0))
-                            },
-                            "confidence_score": float(player.get('confidence_score', 0.5)),
+                            "team_name": player.get('team_name', ''),
+                            "position": player.get('position', ''),
+                            "predicted_points": float(player.get('predicted_points', 0.0)),
+                            "predicted_rebounds": float(player.get('predicted_rebounds', 0.0)),
+                            "predicted_assists": float(player.get('predicted_assists', 0.0)),
+                            "confidence_level": player.get('confidence_level', 'Medium'),
+                            "value_rating": player.get('value_rating', ''),
+                            "line_points": player.get('line_points', 0),
+                            "over_under_points": player.get('over_under_points', ''),
                             "best_prop": {
                                 "type": prop_type,
                                 "edge": max_edge,
@@ -177,7 +196,8 @@ def create_prediction_schema(predictions_df, player_predictions_df=None, setting
                                 "bet_amount": float(player.get(f"{prop_type}_bet_amount", 0.0)),
                                 "bet_type": player.get(f"{prop_type}_bet_type", ''),
                                 "line": float(player.get(f"{prop_type}_bet_line", 0.0))
-                            }
+                            },
+                            "recommended_bets": player.get('recommended_bets', [])
                         }
                         game_data["player_props"].append(player_data)
             
@@ -361,52 +381,51 @@ def display_player_prop(player_data):
     Args:
         player_data: Player prop data from the prediction schema
     """
-    player_name = player_data.get('player_name', '')
-    team = player_data.get('team', '')
-    predictions = player_data.get('predictions', {})
-    confidence = player_data.get('confidence_score', 0.5) * 10  # Scale to 1-10
+    player_name = player_data.get('player_name', 'Unknown Player')
+    team_name = player_data.get('team_name', 'Unknown Team')
+    position = player_data.get('position', '')
     
-    # Get the best prop recommendation
-    best_prop = player_data.get('best_prop', {})
-    prop_type = best_prop.get('type', 'points').upper()
-    edge = best_prop.get('edge', 0.0)
-    bet_pct = best_prop.get('bet_pct', 0.0)
-    bet_amount = best_prop.get('bet_amount', 0.0)
-    bet_type = best_prop.get('bet_type', 'over').upper()
-    line = best_prop.get('line', 0.0)
+    points = player_data.get('predicted_points', 0)
+    rebounds = player_data.get('predicted_rebounds', 0)
+    assists = player_data.get('predicted_assists', 0)
     
-    # Get the prediction value for this prop type
-    prediction_value = predictions.get(prop_type.lower(), 0.0)
+    confidence = player_data.get('confidence_level', 'Medium')
+    value_rating = player_data.get('value_rating', '')
     
-    # Determine confidence level text
-    if confidence >= 8.0:
-        conf_text = "High"
-    elif confidence >= 6.0:
-        conf_text = "Medium-High"
-    elif confidence >= 5.0:
-        conf_text = "Medium"
-    else:
-        conf_text = "Low"
+    # Format line separator
+    separator = '-' * 80
     
-    # Print the formatted prop
-    print(f"\n{player_name.upper()} ({team}) | {prop_type}")
-    print(f"Projection: {prediction_value:.1f} {prop_type.lower()} | "
-          f"{int(confidence*10-10)}% probability {bet_type.lower()} {line}")
-    print(f"Market Line: {bet_type} {line} (-110)")
+    # Display player prop prediction with improved formatting
+    print(f"\n{player_name} ({team_name}{', ' + position if position else ''})")
+    print(f"{'Points:':<10} {points:.1f}")
+    print(f"{'Rebounds:':<10} {rebounds:.1f}")
+    print(f"{'Assists:':<10} {assists:.1f}")
     
-    if edge > 0 and bet_pct > 0:
-        print(f"→ Edge: +{edge:.1f}% on {bet_type} {line} (-110)")
-        print(f"→ Recommended Bet: {bet_pct*100:.1f}% of bankroll (${bet_amount:.2f})")
-        print(f"→ Confidence: {conf_text} ({confidence:.1f}/10)")
+    if 'line_points' in player_data and 'over_under_points' in player_data:
+        line = player_data.get('line_points', 0)
+        over_under = player_data.get('over_under_points', '')
+        print(f"{'Line:':<10} {line:.1f} ({over_under})")
     
-    # Add key data points that support this prediction
-    # This would be replaced with actual analysis data
-    print("• Key Data: Recent performance trends support this projection")
+    if confidence:
+        print(f"{'Confidence:':<10} {confidence}")
+        
+    if value_rating:
+        print(f"{'Value:':<10} {value_rating}")
+
+    # Add recommended bets if available
+    if 'recommended_bets' in player_data:
+        bets = player_data.get('recommended_bets', [])
+        if bets:
+            print("\nRecommended Bets:")
+            for bet in bets:
+                print(f"- {bet}")
+
+    print(separator)
 
 
 def display_player_props(prediction_data):
     """
-    Display only player prop recommendations across all games
+    Display top 5 player prop recommendations from the game with highest confidence
     
     Args:
         prediction_data: Structured prediction data from create_prediction_schema
@@ -419,27 +438,49 @@ def display_player_props(prediction_data):
     bankroll = settings.get('bankroll', 1000.0)
     print(f"\nRisk Profile: {settings.get('risk_level', 'moderate').capitalize()} | Bankroll: ${bankroll:,.2f}\n")
     
-    # Collect all player props from all games
-    all_props = []
+    # Group props by game and find the game with highest average edge
+    games_with_props = []
     for game in prediction_data.get('games', []):
+        if not game.get('player_props', []):
+            continue
+            
         home_team = game.get('home_team', '')
         visitor_team = game.get('visitor_team', '')
         matchup = f"{visitor_team} @ {home_team}"
         
-        for player in game.get('player_props', []):
-            player_with_game = player.copy()
-            player_with_game['matchup'] = matchup
-            all_props.append(player_with_game)
+        # Calculate average prop edge for this game
+        props = game.get('player_props', [])
+        if not props:
+            continue
+            
+        prop_edges = [p.get('best_prop', {}).get('edge', 0) for p in props]
+        avg_edge = sum(prop_edges) / len(prop_edges) if prop_edges else 0
+        
+        games_with_props.append({
+            'matchup': matchup,
+            'props': props,
+            'avg_edge': avg_edge,
+            'game_id': game.get('game_id')
+        })
     
-    # Sort by edge across all games
-    sorted_props = sorted(all_props, key=lambda x: x.get('best_prop', {}).get('edge', 0), reverse=True)
+    if not games_with_props:
+        print("\nNo player prop recommendations available")
+        return
     
-    # Display top 10 props overall
-    for i, player in enumerate(sorted_props[:10]):  # Limit to top 10
-        matchup = player.get('matchup', '')
-        print(f"\n{i+1}. {matchup}")
+    # Sort games by average prop edge to find highest confidence game
+    games_with_props.sort(key=lambda g: g['avg_edge'], reverse=True)
+    top_game = games_with_props[0]
+    
+    # Get top 5 props by edge from the highest confidence game
+    top_props = sorted(top_game['props'], key=lambda p: p.get('best_prop', {}).get('edge', 0), reverse=True)[:5]
+    
+    print(f"\nTOP 5 PLAYER PROPS FOR: {top_game['matchup']}\n")
+    
+    # Display each prop
+    for i, player in enumerate(top_props):
+        print(f"{i+1}. {player.get('player_name', '')}")
         display_player_prop(player)
-        if i < len(sorted_props[:10]) - 1:  # Don't print after the last prop
+        if i < len(top_props) - 1:  # Don't print divider after the last prop
             print("-" * 40)
 
 
@@ -488,15 +529,21 @@ def display_prediction_methodology(prediction_data):
     print("\nBETTING PERFORMANCE METRICS:")
     perf = methodology.get('performance_metrics', {})
     
-    # Overall model accuracy metrics
-    win_accuracy = perf.get('win_prediction_accuracy', 0.64) * 100
-    spread_accuracy = perf.get('spread_accuracy', 0.54) * 100
-    total_accuracy = perf.get('total_accuracy', 0.53) * 100
+    # Use actual performance metrics from tracking data
+    win_accuracy = perf.get('win_prediction_accuracy', 0.0) * 100
+    spread_accuracy = perf.get('spread_accuracy', 0.0) * 100
+    total_accuracy = perf.get('total_accuracy', 0.0) * 100
+    player_prop_accuracy = perf.get('player_prop_accuracy', 0.0) * 100
     
-    # Calculate a simulated ROI based on settings and accuracy
-    # This would be replaced with actual ROI tracking
-    sim_roi = (win_accuracy - 52) * 0.1
-    print(f"• Season-to-date ROI: +{sim_roi:.1f}% using recommended bankroll management")
+    print(f"Win Prediction Accuracy: {win_accuracy:.1f}%")
+    print(f"Spread Prediction Accuracy: {spread_accuracy:.1f}%")
+    print(f"Totals Prediction Accuracy: {total_accuracy:.1f}%")
+    print(f"Player Props Prediction Accuracy: {player_prop_accuracy:.1f}%")
+    
+    # Use actual ROI from tracking data if available
+    if 'roi' in methodology:
+        roi = methodology.get('roi', 0.0)
+        print(f"• Season-to-date ROI: {'+' if roi >= 0 else ''}{roi:.1f}% with recommended bankroll management")
     
     # CLV metrics if available
     if 'clv_metrics' in methodology:

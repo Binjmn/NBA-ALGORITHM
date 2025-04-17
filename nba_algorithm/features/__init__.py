@@ -9,7 +9,7 @@ for the NBA prediction models.
 """
 
 from .game_features import prepare_game_features, extract_game_features
-from .player_features import prepare_player_features, calculate_matchup_advantage
+from .player_features import extract_player_features, predict_props_for_player, get_player_season_average
 
 __all__ = [
     # Game features
@@ -17,6 +17,7 @@ __all__ = [
     'extract_game_features',
     
     # Player features
-    'prepare_player_features',
-    'calculate_matchup_advantage'
+    'extract_player_features',
+    'predict_props_for_player',
+    'get_player_season_average'
 ]

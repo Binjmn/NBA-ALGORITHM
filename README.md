@@ -45,7 +45,8 @@ nba_algorithm/          # Main package directory
 │   ├── __init__.py
 │   ├── loader.py       # Model loading with season awareness
 │   ├── predictor.py    # Prediction engine
-│   └── player_predictor.py # Player prop predictions
+│   ├── player_predictor.py # Player prop predictions
+│   └── model_registry.py # Model versioning and registry system
 ├── output/             # Output formatting and storage
 │   ├── __init__.py
 │   ├── display.py      # Formatted display of predictions
@@ -60,7 +61,9 @@ nba_algorithm/          # Main package directory
 │   ├── __init__.py
 │   ├── settings.py     # Settings management
 │   ├── season_manager.py # Season detection and management
-│   └── logger.py       # Logging utilities
+│   ├── logger.py       # Logging utilities
+│   ├── performance_tracker.py # Model performance tracking
+│   └── feature_evolution.py # Feature discovery and optimization
 └── scheduler/          # Scheduling module
     ├── __init__.py
     └── scheduler.py    # Scheduling logic
@@ -188,6 +191,9 @@ Transforms raw NBA data into predictive features for machine learning models.
 #### player_features.py
 Generates player-specific features for prop betting predictions.
 
+#### feature_evolution.py
+Automatically discovers, evaluates, and optimizes feature sets for different prediction types. Detects changes in league patterns and adapts features accordingly.
+
 ### Model Management Modules
 
 #### loader.py
@@ -199,24 +205,130 @@ Applies loaded models to features to generate predictions with confidence scorin
 #### player_predictor.py
 Specialized prediction logic for player prop betting.
 
-### Utilities
+#### model_registry.py
+Manages model versioning, tracks model lineage, and provides a centralized registry for all trained models. Supports production model designation, A/B testing, and model comparison.
 
-#### settings.py
-Manages application settings, including risk tolerance and output formats.
+### Performance Tracking
 
-#### season_manager.py
-Handles automatic detection and management of NBA seasons and phases.
+#### performance_tracker.py
+Tracks and analyzes model performance over time, maintaining historical records of prediction accuracy. Detects underperforming models and provides metrics for model improvement.
 
-#### logger.py
-Configures logging with appropriate levels, formatting, and output destinations.
+## Advanced Systems
 
-### Output
+### Model Registry System
 
-#### display.py
-Formats prediction results for user-friendly console output.
+The NBA Prediction System now features a comprehensive Model Registry system that handles model versioning, tracking, and deployment:
 
-#### persistence.py
-Saves predictions to CSV and JSON files with appropriate naming conventions.
+#### Key Features
+
+- **Model Versioning**: Maintains a history of all trained models with version information
+- **Performance Tracking**: Records and compares performance metrics across model versions
+- **Production Model Management**: Designates specific model versions as production-ready
+- **Model Lineage**: Tracks relationships between models and their training data
+- **A/B Testing**: Supports comparison testing between different model versions
+- **Model Retrieval**: Fast loading of models by name, version, or other criteria
+
+#### Usage
+
+```python
+# Example: Registering a newly trained model
+from src.models.model_registry import ModelRegistry
+
+registry = ModelRegistry()
+registry.register_model(
+    model_name="moneyline_rf",
+    model_type="moneyline",
+    version="20250510",
+    model_path="models/moneyline_rf_20250510.pkl",
+    metrics={"accuracy": 0.72, "f1": 0.68},
+    metadata={"features": ["home_win_rate", "away_defense_rating"]},
+    register_as_production=True
+)
+
+# Example: Loading a production model
+model = registry.get_production_model("moneyline")
+```
+
+### Feature Evolution System
+
+The Feature Evolution system automatically discovers, evaluates, and optimizes feature sets for all prediction types:
+
+#### Key Features
+
+- **Feature Discovery**: Identifies potential new predictive features through pattern analysis
+- **Automatic Engineering**: Generates interaction terms, rolling averages, and other derived features
+- **Performance Evaluation**: Tests new feature sets against baseline to measure improvements
+- **League Pattern Detection**: Identifies changes in NBA playing patterns that affect feature importance
+- **Optimal Feature Selection**: Selects the best feature combinations for each prediction type
+
+#### Usage
+
+```python
+# Example: Discovering optimal features for a prediction task
+from src.utils.feature_evolution import FeatureEvolution
+
+fe = FeatureEvolution()
+optimal_features = fe.select_optimal_features(
+    data=training_data,
+    target=targets,
+    prediction_type="spread",
+    is_classification=False
+)
+
+# Example: Detecting changes in league patterns
+changes = fe.detect_league_changes(
+    current_data=current_season_data,
+    historical_data=previous_seasons_data,
+    features=current_feature_set
+)
+```
+
+### Performance Tracking System
+
+The Performance Tracking system monitors and analyzes model accuracy over time:
+
+#### Key Features
+
+- **Prediction Recording**: Records all predictions and actual outcomes
+- **Metric Calculation**: Computes accuracy, ROI, and other performance metrics
+- **Historical Tracking**: Maintains time-series performance data
+- **Early Warning**: Detects deteriorating model performance
+- **Performance Reporting**: Generates detailed performance reports
+
+#### Usage
+
+```python
+# Example: Recording prediction results
+from src.utils.performance_tracker import PerformanceTracker
+
+tracker = PerformanceTracker()
+tracker.record_prediction_results(
+    date="2025-05-10",
+    model_name="spread_xgboost",
+    prediction_type="spread",
+    predictions=predictions_list,
+    actual_results=actual_outcomes
+)
+
+# Example: Getting performance metrics
+metrics = tracker.get_performance_metrics(
+    model_name="spread_xgboost",
+    prediction_type="spread",
+    date_range=("2025-04-01", "2025-05-01")
+)
+```
+
+### Continuous Learning Pipeline
+
+The system implements a continuous learning pipeline that ensures models are regularly updated with the latest data and features:
+
+1. **Automatic Data Collection**: Daily gathering of game, player, and odds data
+2. **Feature Evolution**: Weekly analysis of feature effectiveness and discovery of new patterns
+3. **Model Retraining**: Biweekly retraining of models with optimized feature sets
+4. **Performance Monitoring**: Daily tracking of prediction accuracy and model health
+5. **Production Deployment**: Automatic deployment of improved models to production
+
+This pipeline ensures that the prediction system adapts to changes in the NBA landscape and maintains high accuracy throughout the season.
 
 ## Contributing
 

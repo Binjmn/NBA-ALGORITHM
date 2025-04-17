@@ -13,6 +13,9 @@ Schedule (All Times in EST):
 - Every 15 Minutes in 2-Hour Pre-Game Windows (Hourly otherwise): Refresh injuries
 - Every 10 Minutes During Games: Update live scores and odds
 - Hourly: Track CLV
+- Sunday at 1:00 AM: Weekly feature evolution analysis
+- Every other Monday at 3:00 AM: Bi-weekly model retraining
+- Daily at 5:00 AM: Daily performance decline check
 
 Author: Cascade
 Date: April, 2025
@@ -43,6 +46,11 @@ from nba_algorithm.utils.season_manager import get_season_manager
 from nba_algorithm.utils.logger import setup_logging
 from nba_algorithm.utils.performance import track_prediction_accuracy, track_clv
 from nba_algorithm.models.trainer import train_models_if_needed
+
+# Import our new advanced systems
+from nba_algorithm.utils.feature_evolution import FeatureEvolution
+from nba_algorithm.models.model_registry import ModelRegistry
+from nba_algorithm.utils.performance_tracker import PerformanceTracker
 
 # Set up logging
 logger = setup_logging("scheduler")
@@ -148,6 +156,33 @@ def configure_scheduled_jobs(scheduler):
         IntervalTrigger(hours=1, timezone=EST),
         id='track_clv',
         name='Track Closing Line Value',
+        replace_existing=True
+    )
+    
+    # Sunday at 1:00 AM - Weekly feature evolution analysis
+    scheduler.add_job(
+        run_weekly_feature_evolution,
+        CronTrigger(day_of_week='sun', hour=1, minute=0, timezone=EST),
+        id='feature_evolution',
+        name='Weekly Feature Evolution Analysis',
+        replace_existing=True
+    )
+    
+    # Every other Monday at 3:00 AM - Bi-weekly model retraining
+    scheduler.add_job(
+        retrain_models_with_feature_evolution,
+        CronTrigger(day_of_week='mon', hour=3, minute=0, timezone=EST),
+        id='model_retraining',
+        name='Bi-weekly Model Retraining',
+        replace_existing=True
+    )
+    
+    # Daily performance decline check at 5:00 AM
+    scheduler.add_job(
+        check_model_performance,
+        CronTrigger(hour=5, minute=0, timezone=EST),
+        id='performance_check',
+        name='Daily Model Performance Check',
         replace_existing=True
     )
     
@@ -416,6 +451,331 @@ def track_hourly_clv():
         logger.info(f"CLV tracked successfully: {clv_metrics}")
     except Exception as e:
         logger.error(f"Error tracking CLV: {str(e)}")
+
+
+def run_weekly_feature_evolution():
+    """
+    Run weekly feature evolution analysis
+    
+    This function:
+    1. Analyzes recent game and player data for pattern changes
+    2. Discovers and evaluates new potential features
+    3. Updates the feature evolution system with findings
+    """
+    logger.info("Starting weekly feature evolution analysis")
+    
+    try:
+        # Initialize feature evolution system
+        feature_evolution = FeatureEvolution()
+        
+        # Get recent and historical data for analysis
+        today = datetime.now(EST).strftime('%Y-%m-%d')
+        recent_days = 14  # Last two weeks for current patterns
+        historical_days = 90  # Last ~3 months for historical context
+        
+        logger.info(f"Fetching recent data ({recent_days} days) and historical data ({historical_days} days)")
+        recent_data = fetch_historical_games(days=recent_days, end_date=today)
+        historical_data = fetch_historical_games(days=historical_days, end_date=today)
+        
+        if recent_data.empty or historical_data.empty:
+            logger.warning("Insufficient data for feature evolution analysis")
+            return
+        
+        # Detect changes in league patterns
+        logger.info("Analyzing changes in NBA patterns")
+        prediction_types = ["moneyline", "spread", "total", "player_props"]
+        
+        for prediction_type in prediction_types:
+            # Get current feature set
+            current_features = feature_evolution.get_production_feature_set(prediction_type)
+            
+            # Detect changes in league patterns
+            changes = feature_evolution.detect_league_changes(
+                current_data=recent_data,
+                historical_data=historical_data,
+                features=current_features,
+                threshold=0.1  # 10% change is significant
+            )
+            
+            if changes:
+                logger.info(f"Detected {len(changes)} significant changes for {prediction_type} prediction")
+                
+                # Discover potential new features based on these changes
+                new_candidates = feature_evolution.discover_candidate_features(
+                    data=recent_data,
+                    existing_features=current_features,
+                    prediction_type=prediction_type
+                )
+                
+                if new_candidates:
+                    logger.info(f"Discovered {len(new_candidates)} candidate features for {prediction_type}")
+                    
+                    # Engineer the new features
+                    enhanced_data = feature_evolution.engineer_discovered_features(
+                        data=recent_data,
+                        candidates=new_candidates,
+                        existing_features=current_features
+                    )
+                    
+                    if not enhanced_data.empty:
+                        # Determine target variable based on prediction type
+                        target_var = 'result'
+                        is_classification = prediction_type in ["moneyline"]
+                        
+                        if target_var in enhanced_data.columns:
+                            # Compare the new feature set with current production features
+                            logger.info(f"Evaluating new feature set for {prediction_type}")
+                            comparison = feature_evolution.compare_feature_sets(
+                                base_features=current_features,
+                                candidate_features=list(enhanced_data.columns),
+                                data=enhanced_data,
+                                target=enhanced_data[target_var],
+                                prediction_type=prediction_type,
+                                is_classification=is_classification
+                            )
+                            
+                            if comparison["is_better"]:
+                                # Register the improved feature set
+                                logger.info(f"Found improved feature set for {prediction_type} with " +
+                                           f"{len(comparison['candidate_set']['features'])} features")
+                                
+                                # Register the new feature set
+                                feature_set_id = feature_evolution.register_feature_set(
+                                    prediction_type=prediction_type,
+                                    features=comparison["candidate_set"]["features"],
+                                    performance_metrics=comparison["candidate_set"]["metrics"],
+                                    model_id="pending",  # Will be set when model is trained
+                                    description=f"Evolved feature set from {today}"
+                                )
+                                
+                                # Set as production feature set
+                                feature_evolution.set_production_feature_set(prediction_type, feature_set_id)
+                                logger.info(f"Set new feature set as production for {prediction_type}")
+                            else:
+                                logger.info(f"Current feature set for {prediction_type} is still optimal")
+                        else:
+                            logger.warning(f"Target variable '{target_var}' not found in data")
+        
+        # Generate a report on feature evolution
+        report = feature_evolution.generate_report()
+        logger.info("Feature evolution analysis completed - Report generated")
+        
+        # TODO: Save report to file or send as notification
+        
+    except Exception as e:
+        logger.error(f"Error in feature evolution process: {str(e)}")
+
+
+def retrain_models_with_feature_evolution():
+    """
+    Retrain models using the latest optimized feature sets
+    
+    This function:
+    1. Checks if retraining is needed based on performance and data drift
+    2. Uses optimized feature sets from the feature evolution system
+    3. Retrains models and registers them with the model registry
+    """
+    logger.info("Starting bi-weekly model retraining process")
+    
+    try:
+        # Initialize our systems
+        feature_evolution = FeatureEvolution()
+        model_registry = ModelRegistry()
+        performance_tracker = PerformanceTracker()
+        
+        # Get current date in EST timezone
+        today = datetime.now(EST).strftime('%Y-%m-%d')
+        
+        # Determine which models need retraining
+        prediction_types = ["moneyline", "spread", "total", "player_props"]
+        models_to_retrain = []
+        
+        for pred_type in prediction_types:
+            # Check if performance has declined
+            if performance_tracker.detect_performance_decline(pred_type):
+                logger.info(f"Performance decline detected for {pred_type} model - scheduling retraining")
+                models_to_retrain.append(pred_type)
+                continue
+            
+            # Check if feature set has changed since last training
+            current_features = feature_evolution.get_production_feature_set(pred_type)
+            current_model = model_registry.get_production_model(pred_type)
+            
+            if current_model:
+                # Get model metadata to check features used during training
+                model_info = model_registry.get_model_by_id(model_registry.production_models[pred_type]["id"])
+                if "metadata" in model_info and "features" in model_info["metadata"]:
+                    trained_features = set(model_info["metadata"]["features"])
+                    current_features_set = set(current_features)
+                    
+                    # If feature sets differ significantly, retrain
+                    feature_diff = len(trained_features.symmetric_difference(current_features_set))
+                    feature_total = len(trained_features.union(current_features_set))
+                    feature_change_ratio = feature_diff / feature_total if feature_total > 0 else 0
+                    
+                    if feature_change_ratio > 0.1:  # More than 10% change in features
+                        logger.info(f"Feature set for {pred_type} has changed significantly - scheduling retraining")
+                        models_to_retrain.append(pred_type)
+                        continue
+            else:
+                # No production model exists, definitely needs training
+                logger.info(f"No production model found for {pred_type} - scheduling training")
+                models_to_retrain.append(pred_type)
+        
+        if not models_to_retrain:
+            logger.info("No models currently need retraining")
+            return
+        
+        # Retrain the selected models
+        logger.info(f"Will retrain the following models: {', '.join(models_to_retrain)}")
+        
+        # Import the training module - this should be updated to use the new systems
+        from nba_algorithm.models.training import train_model
+        
+        for pred_type in models_to_retrain:
+            logger.info(f"Retraining {pred_type} model with optimized features")
+            
+            # Get optimized features for this model type
+            optimized_features = feature_evolution.get_production_feature_set(pred_type)
+            
+            # Train the model
+            success, model_version, performance_metrics = train_model(
+                model_type=pred_type,
+                feature_list=optimized_features,
+                force_retrain=True
+            )
+            
+            if success:
+                logger.info(f"Successfully retrained {pred_type} model (version: {model_version})")
+                
+                # Check if this model should be promoted to production
+                current_model = model_registry.get_production_model(pred_type)
+                if current_model is None:
+                    # No existing production model, immediately set this one
+                    model_registry.set_production_model(f"{pred_type}_model", pred_type, model_version)
+                    logger.info(f"Set {pred_type} model version {model_version} as production (no previous version)")
+                else:
+                    # Compare with existing production model
+                    current_model_id = model_registry.production_models[pred_type]["id"]
+                    new_model_id = f"{pred_type}_model_{model_version}"  # This ID format should match what's in train_model
+                    
+                    # Set up A/B test
+                    test_name = f"{pred_type}_ab_test_{today.replace('-', '')}"
+                    
+                    test_id = model_registry.setup_ab_test(
+                        model_type=pred_type,
+                        model_a_id=current_model_id,
+                        model_b_id=new_model_id,
+                        test_name=test_name
+                    )
+                    
+                    logger.info(f"Created A/B test '{test_name}' between current and new {pred_type} models")
+                    
+                    # If the new model is clearly better based on training metrics,
+                    # we can promote it immediately; otherwise, we'll evaluate through the A/B test
+                    # This is a simplified heuristic and could be made more sophisticated
+                    if performance_metrics.get("improvement_percentage", 0) > 5:  # More than 5% improvement
+                        model_registry.promote_ab_test_winner(test_id, winner='b')  # b is the challenger
+                        logger.info(f"Immediately promoted new {pred_type} model as it shows >5% improvement")
+            else:
+                logger.error(f"Failed to retrain {pred_type} model")
+        
+        # Generate summary of retraining
+        registry_summary = model_registry.get_registry_summary()
+        logger.info(f"Model retraining complete. Registry now has {registry_summary['models_count']} models")
+        
+    except Exception as e:
+        logger.error(f"Error in model retraining process: {str(e)}")
+
+
+def check_model_performance():
+    """
+    Check model performance and send alerts for any issues
+    
+    This function:
+    1. Analyzes recent prediction accuracy across all model types
+    2. Compares current performance against historical benchmarks
+    3. Sends alerts for any significant performance declines
+    4. Logs performance metrics for monitoring and visualization
+    """
+    logger.info("Running daily model performance check")
+    
+    try:
+        # Initialize performance tracker
+        performance_tracker = PerformanceTracker()
+        
+        # Get current date and recent date range
+        today = datetime.now(EST).strftime('%Y-%m-%d')
+        last_week = (datetime.now(EST) - timedelta(days=7)).strftime('%Y-%m-%d')
+        last_month = (datetime.now(EST) - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        # Check performance for each model type
+        model_types = ["moneyline", "spread", "total", "player_props"]
+        alerts = []
+        
+        for model_type in model_types:
+            # Get recent performance (last 7 days)
+            recent_metrics = performance_tracker.get_performance_metrics(
+                model_name=f"{model_type}_ensemble",  # Standard naming convention
+                prediction_type=model_type,
+                date_range=(last_week, today)
+            )
+            
+            # Get historical performance (last 30 days)
+            historical_metrics = performance_tracker.get_performance_metrics(
+                model_name=f"{model_type}_ensemble",
+                prediction_type=model_type,
+                date_range=(last_month, last_week)
+            )
+            
+            if not recent_metrics or not historical_metrics:
+                logger.warning(f"Insufficient data to evaluate {model_type} model performance")
+                continue
+            
+            # Calculate performance change
+            if model_type in ["moneyline"]:  # Classification models
+                recent_acc = recent_metrics.get("accuracy", 0)
+                hist_acc = historical_metrics.get("accuracy", 0)
+                
+                if hist_acc > 0:
+                    change_pct = ((recent_acc - hist_acc) / hist_acc) * 100
+                    if change_pct < -5:  # More than 5% drop in accuracy
+                        alert = f"⚠️ {model_type.capitalize()} model accuracy has dropped by {abs(change_pct):.1f}% " + \
+                                f"(from {hist_acc:.1%} to {recent_acc:.1%})"
+                        alerts.append(alert)
+                        logger.warning(alert)
+            else:  # Regression models
+                recent_mse = recent_metrics.get("mse", float('inf'))
+                hist_mse = historical_metrics.get("mse", float('inf'))
+                
+                if hist_mse > 0 and hist_mse != float('inf'):
+                    change_pct = ((recent_mse - hist_mse) / hist_mse) * 100
+                    if change_pct > 10:  # More than 10% increase in error
+                        alert = f"⚠️ {model_type.capitalize()} model error has increased by {change_pct:.1f}% " + \
+                                f"(MSE from {hist_mse:.2f} to {recent_mse:.2f})"
+                        alerts.append(alert)
+                        logger.warning(alert)
+        
+        # Additional checks for specific issues
+        for model_type in model_types:
+            # Check for consistent under/over predictions
+            bias_metrics = performance_tracker.check_prediction_bias(model_type)
+            if bias_metrics.get("has_bias", False):
+                bias_direction = "high" if bias_metrics.get("bias_direction", 0) > 0 else "low"
+                alert = f"⚠️ {model_type.capitalize()} model shows consistent {bias_direction} bias " + \
+                        f"({bias_metrics.get('bias_magnitude', 0):.1%})"
+                alerts.append(alert)
+                logger.warning(alert)
+        
+        # Log summary of performance check
+        if alerts:
+            logger.info(f"Performance check complete - {len(alerts)} issues detected")
+            # TODO: Send alerts to appropriate channels (email, Slack, etc.)           
+        else:
+            logger.info("Performance check complete - all models performing normally")
+        
+    except Exception as e:
+        logger.error(f"Error in model performance check: {str(e)}")
 
 
 def start_scheduler(background=True):

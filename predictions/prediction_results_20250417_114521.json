@@ -1,0 +1,20 @@
+[
+  {
+    "away_team": "Heat",
+    "home_team": "Hawks",
+    "date": "2025-04-18",
+    "predictions": {
+      "EnsembleStacking_pred": 0.5,
+      "EnsembleStacking_home_win_proba": 0.5
+    }
+  },
+  {
+    "away_team": "Mavericks",
+    "home_team": "Grizzlies",
+    "date": "2025-04-18",
+    "predictions": {
+      "EnsembleStacking_pred": 0.5,
+      "EnsembleStacking_home_win_proba": 0.5
+    }
+  }
+]
