@@ -32,6 +32,9 @@ from nba_algorithm.models import (
 )
 from nba_algorithm.models.loader import load_models
 from nba_algorithm.models.predictor import predict_game_outcomes, ensemble_prediction
+# Import the new injury analysis and advanced metrics modules
+from nba_algorithm.models.injury_analysis import compare_team_injuries, get_team_injury_data
+from nba_algorithm.models.advanced_metrics import get_team_efficiency_comparison, fetch_team_advanced_metrics
 
 # Import own utility functions
 from nba_algorithm.utils.logger import setup_logging

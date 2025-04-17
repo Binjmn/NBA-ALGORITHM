@@ -183,6 +183,24 @@ Gathers player statistics, injuries, and game participation data.
 #### odds_data.py
 Retrieves betting odds from The Odds API with market analysis functionality.
 
+### Model Enhancement Modules
+
+#### injury_analysis.py
+Analyzes the impact of player injuries on team performance with the following capabilities:
+- Fetches current injury data from reliable sources with proper caching
+- Calculates player importance based on minutes, stats, and team role
+- Generates team injury impact scores that quantify the effect on performance
+- Provides comparative injury analysis between matchup teams
+- Integrates with the prediction pipeline to adjust confidence in predictions
+
+#### advanced_metrics.py
+Leverages advanced NBA statistics to enhance prediction accuracy:
+- Collects and processes player efficiency ratings and other advanced metrics
+- Calculates composite efficiency scores based on weighted metrics
+- Identifies top performers based on holistic statistical evaluation
+- Compares team efficiency differentials to inform matchup predictions
+- Adjusts prediction confidence based on advanced statistical insights
+
 ### Feature Engineering
 
 #### game_features.py

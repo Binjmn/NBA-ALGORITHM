@@ -18,6 +18,9 @@ from typing import Dict, List, Any, Optional, Tuple
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# Add new imports
+from ..models.injury_analysis import compare_team_injuries
+from ..models.advanced_metrics import get_team_efficiency_comparison
 
 def run_predictions(models: Dict[str, Any], features_df: pd.DataFrame) -> pd.DataFrame:
     """

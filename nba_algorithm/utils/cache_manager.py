@@ -247,6 +247,91 @@ def clear_cache(data_type: Optional[str] = None,
         return cleared_count
 
 
+class CacheManager:
+    """Class-based interface for cache management
+    
+    This class provides an object-oriented interface to the cache system,
+    allowing for specialized caching behavior for different components.
+    Each instance can have its own cache name and TTL settings.
+    """
+    
+    def __init__(self, cache_name: str, ttl_seconds: int = 3600, tier: CacheTier = CacheTier.REGULAR):
+        """Initialize a cache manager instance
+        
+        Args:
+            cache_name: Name for this cache instance (used as identifier)
+            ttl_seconds: Time-to-live in seconds for cached items
+            tier: Cache tier to use (VOLATILE, REGULAR, or STABLE)
+        """
+        self.cache_name = cache_name
+        self.ttl_seconds = ttl_seconds
+        self.tier = tier
+        
+        # Ensure the cache type exists in the config, or add it
+        if cache_name not in CACHE_CONFIG:
+            CACHE_CONFIG[cache_name] = {
+                'tier': tier,
+                'ttl': ttl_seconds
+            }
+    
+    def get(self, key: str) -> Optional[Any]:
+        """Get a value from cache
+        
+        Args:
+            key: Cache key to retrieve
+            
+        Returns:
+            Cached value or None if not found or expired
+        """
+        identifier = f"{key}"
+        return read_cache(self.cache_name, identifier)
+    
+    def set(self, key: str, value: Any, metadata: Optional[Dict] = None) -> bool:
+        """Set a value in cache
+        
+        Args:
+            key: Cache key to store under
+            value: Value to cache
+            metadata: Optional metadata to store with the value
+            
+        Returns:
+            Boolean indicating success
+        """
+        identifier = f"{key}"
+        return write_cache(self.cache_name, value, identifier, metadata)
+    
+    def clear(self, older_than: Optional[int] = None) -> int:
+        """Clear all cached items for this cache instance
+        
+        Args:
+            older_than: Optional age threshold in seconds
+            
+        Returns:
+            Number of cache items cleared
+        """
+        return clear_cache(self.cache_name, older_than=older_than)
+    
+    def refresh(self, key: str, getter_func, *args, **kwargs) -> Any:
+        """Get a value from cache, or call a function to get and cache it
+        
+        Args:
+            key: Cache key to retrieve
+            getter_func: Function to call if cache miss
+            *args, **kwargs: Arguments to pass to getter_func
+            
+        Returns:
+            Cached or freshly retrieved value
+        """
+        cached_value = self.get(key)
+        if cached_value is not None:
+            return cached_value
+        
+        # Cache miss, call the getter function
+        fresh_value = getter_func(*args, **kwargs)
+        self.set(key, fresh_value)
+        return fresh_value
+
+
 def get_cache_stats() -> Dict[str, Any]:
     """Get statistics about the current cache state
     

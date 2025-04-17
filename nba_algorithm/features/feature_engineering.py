@@ -18,6 +18,14 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+# Update imports for the new module locations
+from ..models.injury_analysis import get_team_injury_data, compare_team_injuries
+from ..models.advanced_metrics import (
+    fetch_team_advanced_metrics, 
+    fetch_player_advanced_metrics,
+    get_team_efficiency_comparison
+)
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -98,6 +106,44 @@ def prepare_game_features(games: List[Dict], team_stats: Dict, odds: Dict, histo
                     logger.warning(f"Insufficient defensive metrics for game {game.get('id')}. Skipping.")
                     continue
                 
+                # Get injury data for both teams
+                try:
+                    injury_comparison = compare_team_injuries(home_id, visitor_id)
+                    
+                    # Log any key player injuries
+                    if injury_comparison['home_key_players_injured']:
+                        logger.info(f"Home team {home_team.get('full_name')} has key player injuries (impact: {injury_comparison['home_impact']['overall_impact']:.2f})")
+                    
+                    if injury_comparison['away_key_players_injured']:
+                        logger.info(f"Away team {visitor_team.get('full_name')} has key player injuries (impact: {injury_comparison['away_impact']['overall_impact']:.2f})")
+                except Exception as e:
+                    logger.warning(f"Error fetching injury data: {str(e)}. Continuing without injury features.")
+                    # Initialize with default values
+                    injury_comparison = {
+                        'home_impact': {'overall_impact': 0.0, 'key_player_injuries': False},
+                        'away_impact': {'overall_impact': 0.0, 'key_player_injuries': False},
+                        'injury_advantage': 0.0
+                    }
+                
+                # Get advanced metrics for both teams
+                try:
+                    efficiency_comparison = get_team_efficiency_comparison(home_id, visitor_id)
+                    
+                    # Log efficiency information
+                    logger.info(f"Team efficiency comparison: {home_team.get('full_name')}: {efficiency_comparison['home_efficiency']:.2f}, "
+                               f"{visitor_team.get('full_name')}: {efficiency_comparison['away_efficiency']:.2f}, "
+                               f"Overall differential: {efficiency_comparison['overall_differential']:.2f}")
+                except Exception as e:
+                    logger.warning(f"Error fetching advanced metrics: {str(e)}. Continuing without advanced metrics features.")
+                    # Initialize with default values
+                    efficiency_comparison = {
+                        'home_efficiency': 0.5,
+                        'away_efficiency': 0.5,
+                        'offensive_differential': 0.0,
+                        'defensive_differential': 0.0,
+                        'overall_differential': 0.0
+                    }
+                
                 # Assemble feature dictionary
                 game_features = {
                     # Game metadata
@@ -171,6 +217,24 @@ def prepare_game_features(games: List[Dict], team_stats: Dict, odds: Dict, histo
                         "implied_total": market_data.get("total", 0),
                         "market_spread": market_data.get("spread", 0)
                     })
+                
+                # Add injury data
+                game_features.update({
+                    "home_injury_impact": injury_comparison['home_impact']['overall_impact'],
+                    "home_key_players_injured": injury_comparison['home_key_players_injured'],
+                    "away_injury_impact": injury_comparison['away_impact']['overall_impact'],
+                    "away_key_players_injured": injury_comparison['away_key_players_injured'],
+                    "injury_advantage": injury_comparison['injury_advantage']
+                })
+                
+                # Add advanced metrics
+                game_features.update({
+                    "home_efficiency": efficiency_comparison['home_efficiency'],
+                    "away_efficiency": efficiency_comparison['away_efficiency'],
+                    "offensive_differential": efficiency_comparison['offensive_differential'],
+                    "defensive_differential": efficiency_comparison['defensive_differential'],
+                    "overall_differential": efficiency_comparison['overall_differential']
+                })
                 
                 # Add derived features
                 # Win percentage

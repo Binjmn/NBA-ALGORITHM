@@ -17,6 +17,8 @@ import traceback
 
 from ..utils.math_utils import calculate_matchup_difficulty, calculate_prop_confidence
 from ..utils.string_utils import position_to_numeric, parse_height
+from ..models.injury_analysis import fetch_team_injuries, get_injury_impact_score
+from ..models.advanced_metrics import fetch_player_advanced_metrics, get_player_efficiency_rating
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -99,9 +101,86 @@ def extract_player_features(player: Dict, game: Dict, is_home: bool) -> Dict[str
         # Advanced stats (if available)
         features['effective_fg_pct'] = float(season_stats.get('efg_pct', 0))
         features['true_shooting_pct'] = float(season_stats.get('ts_pct', 0))
-        features['usage_rate'] = float(season_stats.get('usage_rate', 0))
-        features['assist_to_turnover'] = float(season_stats.get('ast_to_ratio', 0))
-        features['offensive_rating'] = float(season_stats.get('off_rating', 0))
+        
+        # NEW: Add injury context to player features
+        try:
+            # Get team injuries
+            team_injuries = fetch_team_injuries(features['team_id'])
+            opponent_injuries = fetch_team_injuries(features['opponent_id'])
+            
+            # Process team injuries
+            team_injury_data = get_injury_impact_score(team_injuries, features['team_id'])
+            opponent_injury_data = get_injury_impact_score(opponent_injuries, features['opponent_id'])
+            
+            # Check if any key defensive players are injured on opponent team
+            # Filter for defensive positions (typically centers, power forwards, defensive specialists)
+            defensive_player_injuries = []
+            for injury in opponent_injury_data.get('detail', []):
+                position = injury.get('position', '')
+                # Centers and power forwards typically provide rim protection
+                if position in ['C', 'PF', 'F-C', 'C-F']:
+                    defensive_player_injuries.append(injury)
+            
+            features['opponent_injury_impact'] = opponent_injury_data['overall_impact']
+            features['opponent_defensive_injuries'] = len(defensive_player_injuries) > 0
+            features['team_injury_impact'] = team_injury_data['overall_impact']
+            
+            # Calculate opportunity increase due to teammate injuries
+            # If teammates at same position are injured, player may get more minutes/usage
+            same_position_injuries = []
+            for injury in team_injury_data.get('detail', []):
+                if injury.get('position', '') == position and injury.get('player_id') != features['player_id']:
+                    same_position_injuries.append(injury)
+            
+            # Calculate opportunity boost (0 to 1 scale)
+            if same_position_injuries:
+                # Sum importance of injured teammates at same position
+                importance_sum = sum(inj.get('importance', 0) for inj in same_position_injuries)
+                features['opportunity_boost'] = min(importance_sum, 1.0)  # Cap at 1.0
+            else:
+                features['opportunity_boost'] = 0.0
+                
+        except Exception as e:
+            logger.warning(f"Error adding injury context for player {features['player_id']}: {str(e)}")
+            # Set default values if error occurs
+            features['opponent_injury_impact'] = 0.0
+            features['opponent_defensive_injuries'] = False
+            features['team_injury_impact'] = 0.0
+            features['opportunity_boost'] = 0.0
+        
+        # NEW: Add advanced metrics
+        try:
+            # Get player advanced metrics
+            advanced_metrics = fetch_player_advanced_metrics(features['player_id'])
+            efficiency_data = get_player_efficiency_rating(features['player_id'])
+            
+            if advanced_metrics:
+                # Add key advanced metrics
+                features['offensive_rating'] = float(advanced_metrics.get('offensive_rating', 0))
+                features['defensive_rating'] = float(advanced_metrics.get('defensive_rating', 0))
+                features['player_efficiency'] = float(advanced_metrics.get('efficiency_score', 0))
+                features['usage_percentage'] = float(advanced_metrics.get('usage_percentage', 0))
+                features['assist_percentage'] = float(advanced_metrics.get('assist_percentage', 0))
+                
+                # Add efficiency trend (positive = improving, negative = declining)
+                features['efficiency_trend'] = float(efficiency_data.get('trend', 0))
+            else:
+                # Set default values if no advanced metrics available
+                features['offensive_rating'] = 110.0  # League average approximation
+                features['defensive_rating'] = 110.0  # League average approximation
+                features['player_efficiency'] = 0.5    # Average efficiency
+                features['usage_percentage'] = 0.2     # Average usage
+                features['assist_percentage'] = 0.15   # Average assist rate
+                features['efficiency_trend'] = 0.0     # Neutral trend
+        except Exception as e:
+            logger.warning(f"Error adding advanced metrics for player {features['player_id']}: {str(e)}")
+            # Set default values if error occurs
+            features['offensive_rating'] = 110.0
+            features['defensive_rating'] = 110.0
+            features['player_efficiency'] = 0.5
+            features['usage_percentage'] = 0.2
+            features['assist_percentage'] = 0.15
+            features['efficiency_trend'] = 0.0
         
         # Team context features
         team_stats = game.get(team_type, {}).get('stats', {})

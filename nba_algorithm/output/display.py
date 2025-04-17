@@ -11,6 +11,11 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List, Optional, Union, Tuple
 import logging
+import json
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+from ..models.injury_analysis import compare_team_injuries
+from ..models.advanced_metrics import get_team_efficiency_comparison
 
 logger = logging.getLogger(__name__)
 
@@ -206,172 +211,193 @@ def create_prediction_schema(predictions_df, player_predictions_df=None, setting
     return prediction_data
 
 
-def display_prediction_output(prediction_data):
+def display_game_prediction(game_data):
     """
-    Display game predictions in a clean, professional format
+    Display a formatted game prediction
     
     Args:
-        prediction_data: Structured prediction data from create_prediction_schema
+        game_data: Dictionary containing game prediction data
     """
-    print("=" * 80)
-    print(f"NBA PREDICTIONS | {prediction_data['date']}")
-    print("=" * 80)
+    # Extract basic game information
+    home_team = game_data.get('home_team', 'Unknown')
+    visitor_team = game_data.get('visitor_team', 'Unknown')
+    game_date = game_data.get('date', 'Unknown')
+    game_time = game_data.get('game_time', '7:00 PM ET')
     
-    # Display settings info
-    settings = prediction_data.get('settings', {})
-    risk_level = settings.get('risk_level', 'moderate').capitalize()
-    bankroll = settings.get('bankroll', 1000.0)
-    print(f"\nGenerated at: {prediction_data['generation_time']} | Bankroll: ${bankroll:,.2f} | Risk Profile: {risk_level}\n")
+    # Format header with matchup and date
+    header = f"{visitor_team} @ {home_team} - {game_date}"
+    print("\n" + "=" * len(header))
+    print(header)
+    print("=" * len(header))
     
-    # Display each game
-    for game in prediction_data.get('games', []):
-        home_team = game.get('home_team', '')
-        visitor_team = game.get('visitor_team', '')
-        game_time = game.get('game_time', '7:00 PM ET')
+    # Display win prediction
+    win_pred = game_data.get('win_prediction', {})
+    home_win_prob = win_pred.get('home_win_probability', 0.5) * 100
+    visitor_win_prob = win_pred.get('visitor_win_probability', 0.5) * 100
+    conf_level = win_pred.get('confidence_level', 'Medium')
+    conf_score = win_pred.get('confidence_score', 0.5) * 10  # Scale to 1-10
+    
+    print("\nMONEYLINE PREDICTION:")
+    print(f"{home_team} Win: {home_win_prob:.0f}% | {visitor_team} Win: {visitor_win_prob:.0f}%")
+    
+    # Market odds for moneyline
+    market_odds = game_data.get('market_odds', {})
+    if market_odds.get('home_odds') and market_odds.get('visitor_odds'):
+        print(f"Market Odds: {home_team} {market_odds['home_odds']} | {visitor_team} {market_odds['visitor_odds']}")
+    
+    # Betting recommendation for moneyline
+    betting_rec = game_data.get('betting_recommendations', {}).get('moneyline', {})
+    edge = betting_rec.get('edge', 0.0)
+    bet_pct = betting_rec.get('bet_pct', 0.0)
+    bet_amount = betting_rec.get('bet_amount', 0.0)
+    bet_team = betting_rec.get('bet_team', '')
+    bet_odds = betting_rec.get('bet_odds', 0)
+    
+    if edge > 0 and bet_pct > 0:
+        print(f"→ Edge: +{edge:.1f}% on {bet_team} ({bet_odds})")
+        print(f"→ Recommended Bet: {bet_pct*100:.1f}% of bankroll (${bet_amount:.2f})")
+        print(f"→ Confidence: {conf_level} ({conf_score:.1f}/10)")
+    
+    # Display injury information if available
+    if 'confidence_injury_note' in game_data:
+        print(f"\nInjury Note: {game_data['confidence_injury_note']}")
         
-        print(f"{visitor_team.upper()} @ {home_team.upper()} | {game_time}")
-        print("-" * 80)
-        
-        # Win prediction
-        win_pred = game.get('win_prediction', {})
-        home_win_prob = win_pred.get('home_win_probability', 0.5) * 100
-        visitor_win_prob = win_pred.get('visitor_win_probability', 0.5) * 100
-        conf_level = win_pred.get('confidence_level', 'Medium')
-        conf_score = win_pred.get('confidence_score', 0.5) * 10  # Scale to 1-10
-        
-        print("\nMONEYLINE PREDICTION:")
-        print(f"{home_team} Win: {home_win_prob:.0f}% | {visitor_team} Win: {visitor_win_prob:.0f}%")
-        
-        # Market odds for moneyline
-        market_odds = game.get('market_odds', {})
-        if market_odds.get('home_odds') and market_odds.get('visitor_odds'):
-            print(f"Market Odds: {home_team} {market_odds['home_odds']} | {visitor_team} {market_odds['visitor_odds']}")
-        
-        # Betting recommendation for moneyline
-        betting_rec = game.get('betting_recommendations', {}).get('moneyline', {})
-        edge = betting_rec.get('edge', 0.0)
-        bet_pct = betting_rec.get('bet_pct', 0.0)
-        bet_amount = betting_rec.get('bet_amount', 0.0)
-        bet_team = betting_rec.get('bet_team', '')
-        bet_odds = betting_rec.get('bet_odds', 0)
-        
-        if edge > 0 and bet_pct > 0:
-            print(f"→ Edge: +{edge:.1f}% on {bet_team} ({bet_odds})")
-            print(f"→ Recommended Bet: {bet_pct*100:.1f}% of bankroll (${bet_amount:.2f})")
-            print(f"→ Confidence: {conf_level} ({conf_score:.1f}/10)")
-        
-        # Spread prediction
-        spread_pred = game.get('spread_prediction', {})
-        spread = spread_pred.get('predicted_spread', 0.0)
-        spread_prob = spread_pred.get('spread_probability', 0.55) * 100
-        spread_conf = spread_pred.get('confidence', 0.55) * 10  # Scale to 1-10
-        
-        favorite = home_team if spread > 0 else visitor_team
-        spread_val = abs(spread)
-        
-        print("\nSPREAD PREDICTION:")
-        print(f"{favorite} -{spread_val:.1f} | {spread_prob:.0f}% probability to cover")
-        
-        # Market line for spread
-        if market_odds.get('spread_line') and market_odds.get('spread_odds'):
-            print(f"Market Line: {market_odds['spread_line']} ({market_odds['spread_odds']})")
-        
-        # Betting recommendation for spread
-        spread_bet = game.get('betting_recommendations', {}).get('spread', {})
-        spread_edge = spread_bet.get('edge', 0.0)
-        spread_bet_pct = spread_bet.get('bet_pct', 0.0)
-        spread_bet_amount = spread_bet.get('bet_amount', 0.0)
-        
-        if spread_edge > 0 and spread_bet_pct > 0:
-            # Determine confidence level text based on confidence score
-            if spread_conf >= 8.0:
-                spread_conf_text = "High"
-            elif spread_conf >= 6.0:
-                spread_conf_text = "Medium"
-            else:
-                spread_conf_text = "Low"
+        # Get more detailed injury information
+        try:
+            home_id = game_data.get('home_team_id')
+            away_id = game_data.get('away_team_id')
+            
+            if home_id and away_id:
+                injury_data = compare_team_injuries(home_id, away_id)
                 
-            print(f"→ Edge: +{spread_edge:.1f}% on {favorite} {market_odds.get('spread_line', '')}")
-            print(f"→ Recommended Bet: {spread_bet_pct*100:.1f}% of bankroll (${spread_bet_amount:.2f})")
-            print(f"→ Confidence: {spread_conf_text} ({spread_conf:.1f}/10)")
-        
-        # Total prediction
-        total_pred = game.get('total_prediction', {})
-        total = total_pred.get('projected_total', 220.0)
-        over_prob = total_pred.get('over_probability', 0.5) * 100
-        total_conf = total_pred.get('confidence', 0.55) * 10  # Scale to 1-10
-        
-        print("\nTOTAL PREDICTION:")
-        print(f"Projected: {total:.1f} points | {over_prob:.0f}% probability {'over' if over_prob > 50 else 'under'}")
-        
-        # Market line for total
-        if market_odds.get('total_line'):
-            print(f"Market Line: O/U {market_odds['total_line']} (O {market_odds.get('over_odds', '')}, U {market_odds.get('under_odds', '')})")
-        
-        # Betting recommendation for total
-        total_bet = game.get('betting_recommendations', {}).get('total', {})
-        total_edge = total_bet.get('edge', 0.0)
-        total_bet_pct = total_bet.get('bet_pct', 0.0)
-        total_bet_amount = total_bet.get('bet_amount', 0.0)
-        total_bet_type = total_bet.get('bet_type', '').title()
-        
-        if total_edge > 0 and total_bet_pct > 0:
-            # Determine confidence level text based on confidence score
-            if total_conf >= 8.0:
-                total_conf_text = "High"
-            elif total_conf >= 6.0:
-                total_conf_text = "Medium"
-            else:
-                total_conf_text = "Low"
+                # Show key player injuries for both teams
+                if injury_data['home_key_players_injured']:
+                    print(f"\n{home_team} Key Injuries:")
+                    for injury in injury_data['home_impact']['detail']:
+                        if injury.get('is_key_player', False):
+                            print(f"  - {injury.get('player_name')}: {injury.get('status')} (Impact: {injury.get('impact', 0):.2f})")
                 
-            print(f"→ Edge: +{total_edge:.1f}% on {total_bet_type} {market_odds.get('total_line', '')}")
-            print(f"→ Recommended Bet: {total_bet_pct*100:.1f}% of bankroll (${total_bet_amount:.2f})")
-            print(f"→ Confidence: {total_conf_text} ({total_conf:.1f}/10)")
+                if injury_data['away_key_players_injured']:
+                    print(f"\n{visitor_team} Key Injuries:")
+                    for injury in injury_data['away_impact']['detail']:
+                        if injury.get('is_key_player', False):
+                            print(f"  - {injury.get('player_name')}: {injury.get('status')} (Impact: {injury.get('impact', 0):.2f})")
+        except Exception as e:
+            logger.warning(f"Error displaying detailed injury information: {str(e)}")
+    
+    # Display advanced metrics information if available
+    if 'confidence_metrics_note' in game_data:
+        print(f"\nAdvanced Metrics: {game_data['confidence_metrics_note']}")
         
-        # Model insights
-        print("\nMODEL INSIGHTS:")
-        
-        # Primary model info
-        methodology = prediction_data.get('methodology', {})
-        primary_model = methodology.get('models_used', ["Standard Prediction Models"])[0]
-        print(f"• Primary Model: {primary_model}")
-        
-        # Key factors (this would need to be populated with actual factors)
-        # For now using placeholder data that would be replaced with real analysis
-        team_factors = []
-        if home_win_prob > visitor_win_prob:
-            team_factors.append(f"{home_team}'s home court advantage")
+        # Show more detailed efficiency information
+        try:
+            home_id = game_data.get('home_team_id')
+            away_id = game_data.get('away_team_id')
+            
+            if home_id and away_id:
+                metrics_data = get_team_efficiency_comparison(home_id, away_id)
+                
+                # Display team efficiency ratings
+                print(f"\nTeam Efficiency Comparison:")
+                print(f"  {home_team}: {metrics_data.get('home_efficiency', 0):.2f}")
+                print(f"  {visitor_team}: {metrics_data.get('away_efficiency', 0):.2f}")
+                print(f"  Differential: {metrics_data.get('overall_differential', 0):.2f} ({'Home advantage' if metrics_data.get('overall_differential', 0) > 0 else 'Away advantage'})")
+                
+                # Show top players by efficiency
+                if 'home_top_players' in metrics_data and metrics_data['home_top_players']:
+                    print(f"\n{home_team} Top Performers:")
+                    for player in metrics_data['home_top_players'][:2]:  # Show top 2
+                        print(f"  - {player.get('player_name')}: Efficiency {player.get('efficiency_score', 0):.2f}")
+                
+                if 'away_top_players' in metrics_data and metrics_data['away_top_players']:
+                    print(f"\n{visitor_team} Top Performers:")
+                    for player in metrics_data['away_top_players'][:2]:  # Show top 2
+                        print(f"  - {player.get('player_name')}: Efficiency {player.get('efficiency_score', 0):.2f}")
+        except Exception as e:
+            logger.warning(f"Error displaying detailed advanced metrics: {str(e)}")
+    
+    # Display spread prediction
+    spread_pred = game_data.get('spread_prediction', {})
+    spread = spread_pred.get('predicted_spread', 0.0)
+    spread_prob = spread_pred.get('spread_probability', 0.55) * 100
+    spread_conf = spread_pred.get('confidence', 0.55) * 10  # Scale to 1-10
+    
+    favorite = home_team if spread > 0 else visitor_team
+    spread_val = abs(spread)
+    
+    print("\nSPREAD PREDICTION:")
+    print(f"{favorite} -{spread_val:.1f} | {spread_prob:.0f}% probability to cover")
+    
+    # Market line for spread
+    if market_odds.get('spread_line') and market_odds.get('spread_odds'):
+        print(f"Market Line: {market_odds['spread_line']} ({market_odds['spread_odds']})")
+    
+    # Betting recommendation for spread
+    spread_bet = game_data.get('betting_recommendations', {}).get('spread', {})
+    spread_edge = spread_bet.get('edge', 0.0)
+    spread_bet_pct = spread_bet.get('bet_pct', 0.0)
+    spread_bet_amount = spread_bet.get('bet_amount', 0.0)
+    
+    if spread_edge > 0 and spread_bet_pct > 0:
+        # Determine confidence level text based on confidence score
+        if spread_conf >= 8.0:
+            spread_conf_text = "High"
+        elif spread_conf >= 6.0:
+            spread_conf_text = "Medium"
         else:
-            team_factors.append(f"{visitor_team}'s recent form")
+            spread_conf_text = "Low"
             
-        print(f"• Key Factors: {', '.join(team_factors)}")
-        
-        # Data quality info
-        data_quality = 96 + round(win_pred.get('confidence_score', 0.5) * 4)  # Simulated data quality based on confidence
-        print(f"• Data Quality: {data_quality}% complete")
-        
-        # CLV potential if available
-        if 'clv_metrics' in methodology:
-            clv_rate = methodology['clv_metrics'].get('positive_clv_rate', 0.0) * 100
-            print(f"• CLV Potential: Historical {clv_rate:.1f}% positive movement on similar games")
-        
-        # Only display player props if they exist for this game
-        player_props = game.get('player_props', [])
-        if player_props:
-            print("\nPLAYER PROP RECOMMENDATIONS:")
-            print("-" * 80)
+        print(f"→ Edge: +{spread_edge:.1f}% on {favorite} {market_odds.get('spread_line', '')}")
+        print(f"→ Recommended Bet: {spread_bet_pct*100:.1f}% of bankroll (${spread_bet_amount:.2f})")
+        print(f"→ Confidence: {spread_conf_text} ({spread_conf:.1f}/10)")
+    
+    # Display total prediction
+    total_pred = game_data.get('total_prediction', {})
+    total = total_pred.get('projected_total', 220.0)
+    over_prob = total_pred.get('over_probability', 0.5) * 100
+    total_conf = total_pred.get('confidence', 0.55) * 10  # Scale to 1-10
+    
+    print("\nTOTAL PREDICTION:")
+    print(f"Projected: {total:.1f} points | {over_prob:.0f}% probability {'over' if over_prob > 50 else 'under'}")
+    
+    # Market line for total
+    if market_odds.get('total_line'):
+        print(f"Market Line: O/U {market_odds['total_line']} (O {market_odds.get('over_odds', '')}, U {market_odds.get('under_odds', '')})")
+    
+    # Betting recommendation for total
+    total_bet = game_data.get('betting_recommendations', {}).get('total', {})
+    total_edge = total_bet.get('edge', 0.0)
+    total_bet_pct = total_bet.get('bet_pct', 0.0)
+    total_bet_amount = total_bet.get('bet_amount', 0.0)
+    total_bet_type = total_bet.get('bet_type', '').title()
+    
+    if total_edge > 0 and total_bet_pct > 0:
+        # Determine confidence level text based on confidence score
+        if total_conf >= 8.0:
+            total_conf_text = "High"
+        elif total_conf >= 6.0:
+            total_conf_text = "Medium"
+        else:
+            total_conf_text = "Low"
             
-            # Sort by edge
-            sorted_props = sorted(player_props, key=lambda x: x.get('best_prop', {}).get('edge', 0), reverse=True)
-            
-            # Show top 3 props with highest edge
-            for i, player in enumerate(sorted_props[:3]):  # Limit to top 3
-                display_player_prop(player)
+        print(f"→ Edge: +{total_edge:.1f}% on {total_bet_type} {market_odds.get('total_line', '')}")
+        print(f"→ Recommended Bet: {total_bet_pct*100:.1f}% of bankroll (${total_bet_amount:.2f})")
+        print(f"→ Confidence: {total_conf_text} ({total_conf:.1f}/10)")
+    
+    # Display player props if available
+    player_props = game_data.get('player_props', [])
+    if player_props:
+        print("\nPLAYER PROP RECOMMENDATIONS:")
+        print("-" * 80)
+        
+        # Sort by edge
+        sorted_props = sorted(player_props, key=lambda x: x.get('best_prop', {}).get('edge', 0), reverse=True)
+        
+        # Show top 3 props with highest edge
+        for i, player in enumerate(sorted_props[:3]):  # Limit to top 3
+            display_player_prop(player)
         
         print("-" * 80)
-    
-    # Display methodology
-    display_prediction_methodology(prediction_data)
 
 
 def display_player_prop(player_data):
@@ -408,9 +434,6 @@ def display_player_prop(player_data):
     
     if confidence:
         print(f"{'Confidence:':<10} {confidence}")
-        
-    if value_rating:
-        print(f"{'Value:':<10} {value_rating}")
 
     # Add recommended bets if available
     if 'recommended_bets' in player_data:
@@ -575,3 +598,29 @@ def display_prediction_methodology(prediction_data):
     print(f"• Risk Profile Applied: {risk_level.capitalize()} ({bet_range} of bankroll per recommendation)")
     
     print("=" * 80)
+
+
+def display_prediction_output(prediction_data):
+    """
+    Display game predictions in a clean, professional format
+    
+    Args:
+        prediction_data: Structured prediction data from create_prediction_schema
+    """
+    print("=" * 80)
+    print(f"NBA PREDICTIONS | {prediction_data['date']}")
+    print("=" * 80)
+    
+    # Display settings info
+    settings = prediction_data.get('settings', {})
+    risk_level = settings.get('risk_level', 'moderate').capitalize()
+    bankroll = settings.get('bankroll', 1000.0)
+    print(f"\nGenerated at: {prediction_data['generation_time']} | Bankroll: ${bankroll:,.2f} | Risk Profile: {risk_level}\n")
+    
+    # Display each game
+    for game in prediction_data.get('games', []):
+        display_game_prediction(game)
+        print("-" * 80)
+    
+    # Display methodology
+    display_prediction_methodology(prediction_data)
