@@ -1,0 +1,282 @@
+{
+  "models": {
+    "Bayesian_default_20250416_160403_v1": {
+      "id": "Bayesian_default_20250416_160403_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250416_160403_v1.pkl",
+      "created_at": "2025-04-16T16:04:03",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250416_160721_v1": {
+      "id": "Bayesian_default_20250416_160721_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250416_160721_v1.pkl",
+      "created_at": "2025-04-16T16:07:21",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250416_161526_v1": {
+      "id": "Bayesian_default_20250416_161526_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250416_161526_v1.pkl",
+      "created_at": "2025-04-16T16:15:26",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250416_180500_v1": {
+      "id": "Bayesian_default_20250416_180500_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250416_180500_v1.pkl",
+      "created_at": "2025-04-16T18:05:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "Bayesian_default_20250416_183800_v1": {
+      "id": "Bayesian_default_20250416_183800_v1",
+      "type": "Bayesian",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\Bayesian_20250416_183800_v1.pkl",
+      "created_at": "2025-04-16T18:38:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250416_160403_v1": {
+      "id": "CombinedGBM_default_20250416_160403_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250416_160403_v1.pkl",
+      "created_at": "2025-04-16T16:04:03",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250416_160721_v1": {
+      "id": "CombinedGBM_default_20250416_160721_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250416_160721_v1.pkl",
+      "created_at": "2025-04-16T16:07:21",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250416_161526_v1": {
+      "id": "CombinedGBM_default_20250416_161526_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250416_161526_v1.pkl",
+      "created_at": "2025-04-16T16:15:26",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250416_180500_v1": {
+      "id": "CombinedGBM_default_20250416_180500_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250416_180500_v1.pkl",
+      "created_at": "2025-04-16T18:05:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "CombinedGBM_default_20250416_183800_v1": {
+      "id": "CombinedGBM_default_20250416_183800_v1",
+      "type": "CombinedGBM",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\CombinedGBM_20250416_183800_v1.pkl",
+      "created_at": "2025-04-16T18:38:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250416_161526_v1": {
+      "id": "EnsembleStacking_default_20250416_161526_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250416_161526_v1.pkl",
+      "created_at": "2025-04-16T16:15:26",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250416_180515_v1": {
+      "id": "EnsembleStacking_default_20250416_180515_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250416_180515_v1.pkl",
+      "created_at": "2025-04-16T18:05:15",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250416_180723_v1": {
+      "id": "EnsembleStacking_default_20250416_180723_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250416_180723_v1.pkl",
+      "created_at": "2025-04-16T18:07:23",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250416_183815_v1": {
+      "id": "EnsembleStacking_default_20250416_183815_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250416_183815_v1.pkl",
+      "created_at": "2025-04-16T18:38:15",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "EnsembleStacking_default_20250416_183959_v1": {
+      "id": "EnsembleStacking_default_20250416_183959_v1",
+      "type": "EnsembleStacking",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\EnsembleStacking_20250416_183959_v1.pkl",
+      "created_at": "2025-04-16T18:39:59",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "GradientBoosting_default_20250416_160022_v1": {
+      "id": "GradientBoosting_default_20250416_160022_v1",
+      "type": "GradientBoosting",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\GradientBoosting_20250416_160022_v1.pkl",
+      "created_at": "2025-04-16T16:00:22",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "GradientBoosting_default_20250416_160403_v1": {
+      "id": "GradientBoosting_default_20250416_160403_v1",
+      "type": "GradientBoosting",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\GradientBoosting_20250416_160403_v1.pkl",
+      "created_at": "2025-04-16T16:04:03",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "GradientBoosting_default_20250416_160722_v1": {
+      "id": "GradientBoosting_default_20250416_160722_v1",
+      "type": "GradientBoosting",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\GradientBoosting_20250416_160722_v1.pkl",
+      "created_at": "2025-04-16T16:07:22",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "GradientBoosting_default_20250416_161526_v1": {
+      "id": "GradientBoosting_default_20250416_161526_v1",
+      "type": "GradientBoosting",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\GradientBoosting_20250416_161526_v1.pkl",
+      "created_at": "2025-04-16T16:15:26",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_default_20250416_160022_v1": {
+      "id": "RandomForest_default_20250416_160022_v1",
+      "type": "RandomForest",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\RandomForest_20250416_160022_v1.pkl",
+      "created_at": "2025-04-16T16:00:22",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_default_20250416_160403_v1": {
+      "id": "RandomForest_default_20250416_160403_v1",
+      "type": "RandomForest",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\RandomForest_20250416_160403_v1.pkl",
+      "created_at": "2025-04-16T16:04:03",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_default_20250416_160722_v1": {
+      "id": "RandomForest_default_20250416_160722_v1",
+      "type": "RandomForest",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\RandomForest_20250416_160722_v1.pkl",
+      "created_at": "2025-04-16T16:07:22",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_default_20250416_161526_v1": {
+      "id": "RandomForest_default_20250416_161526_v1",
+      "type": "RandomForest",
+      "task": "default",
+      "version": 1,
+      "file_path": "models\\RandomForest_20250416_161526_v1.pkl",
+      "created_at": "2025-04-16T16:15:26",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250416_180500_v1": {
+      "id": "RandomForest_classification_20250416_180500_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250416_180500_v1.pkl",
+      "created_at": "2025-04-16T18:05:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    },
+    "RandomForest_classification_20250416_183800_v1": {
+      "id": "RandomForest_classification_20250416_183800_v1",
+      "type": "RandomForest",
+      "task": "classification",
+      "version": 1,
+      "file_path": "models\\RandomForest_classification_20250416_183800_v1.pkl",
+      "created_at": "2025-04-16T18:38:00",
+      "metrics": {},
+      "is_production": false,
+      "status": "active"
+    }
+  },
+  "production": {},
+  "last_updated": "2025-04-16T18:39:59.875203",
+  "version": "1.0"
+}

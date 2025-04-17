@@ -23,6 +23,92 @@ Monitors model performance and CLV over time, with automatic retraining when per
 ### 6. API Integration
 Provides a REST API for future UI/website integration.
 
+### 7. Season Management
+Automatically detects and manages NBA season transitions, ensuring the system adapts to different season phases.
+
+## Modular Code Structure (April 2025 Update)
+
+The codebase has been restructured into a modular organization to improve maintainability, readability, and compatibility with context-aware tools. Each module focuses on a specific functionality area.
+
+### Directory Structure
+
+```
+scripts/
+├── main.py                    # Entry point that orchestrates the prediction workflow
+├── config.py                  # Configuration, logging setup, and constants
+├── models/                    # Model management
+│   ├── __init__.py            
+│   ├── loader.py              # Model loading functions
+│   └── predictor.py           # Core prediction logic
+├── data/                      # Data acquisition 
+│   ├── __init__.py
+│   ├── game_data.py           # Game data fetching
+│   ├── player_data.py         # Player data fetching
+│   ├── team_data.py           # Team statistics fetching
+│   └── odds_data.py           # Betting odds fetching
+├── features/                  # Feature engineering
+│   ├── __init__.py
+│   ├── game_features.py       # Game feature extraction
+│   └── player_features.py     # Player feature extraction
+├── utils/                     # Utility functions
+│   ├── __init__.py
+│   ├── math_utils.py          # Mathematical helper functions
+│   ├── string_utils.py        # String processing helpers
+│   └── storage.py             # File saving/loading functions
+├── presentation/              # Output formatting
+│   ├── __init__.py
+│   ├── display.py             # User-friendly display functions
+│   └── explanations.py        # Natural language explanations
+├── season_management/         # Season management
+│   ├── __init__.py
+│   ├── season_config.py       # NBA season definitions and phase transitions
+│   └── season_manager.py      # Season detection and management
+```
+
+### Module Responsibilities
+
+#### Main Controller
+- **main.py**: Central orchestration point that coordinates all other modules
+
+#### Configuration
+- **config.py**: Environment configuration, logging setup, and global constants
+
+#### Data Acquisition
+- **game_data.py**: Fetches NBA games data with robust error handling
+- **player_data.py**: Retrieves player information and statistics
+- **team_data.py**: Gets team statistics and contextual information
+- **odds_data.py**: Acquires betting odds and player props from odds providers
+
+#### Feature Engineering
+- **game_features.py**: Extracts and prepares game-level features
+- **player_features.py**: Processes player-specific features for prop predictions
+
+#### Model Management
+- **loader.py**: Handles loading of trained models from storage
+- **predictor.py**: Core prediction logic for both games and player props
+
+#### Utilities
+- **math_utils.py**: Mathematical functions for predictions and processing
+- **string_utils.py**: String manipulation helpers for team/player names
+- **storage.py**: File operations for saving/loading data and results
+
+#### Presentation
+- **display.py**: User-friendly formatting of prediction results
+- **explanations.py**: Natural language generation for explaining predictions
+
+#### Season Management
+- **season_config.py**: Defines NBA season date ranges, phases, and provides utilities for identifying seasons based on dates
+- **season_manager.py**: Implements the `SeasonManager` class that automatically detects and manages season transitions, adapting the system's behavior based on current season context
+
+### Key Improvements
+
+1. **Enhanced Modularity**: Each file is focused on a specific functionality area
+2. **Better Error Handling**: Comprehensive error handling throughout all modules
+3. **Improved Readability**: Logical organization makes code easier to navigate
+4. **Windsurf Compatibility**: Files are kept under 600 lines for better context-aware tool support
+5. **Production Readiness**: Removed fallback mechanisms for synthetic data, ensuring real data usage
+6. **Proper Documentation**: Comprehensive docstrings and code comments
+
 ## Detailed Architecture Documents
 
 For detailed information on specific architecture components, please refer to the following documents:
@@ -34,17 +120,17 @@ For detailed information on specific architecture components, please refer to th
 5. [API Integration](docs/architecture/api_integration.md)
 6. [Performance Tracking](docs/architecture/performance_tracking.md)
 
-## Enhanced Prediction System Architecture (April 2025)
+## Enhanced Prediction System Architecture 
 
 ### 1. Enhanced Feature Engineering
 
 The system now includes advanced feature engineering capabilities that significantly improve prediction accuracy:
 
-- **Path**: `src/features/advanced_features_plus.py`
-- **Component**: `EnhancedFeatureEngineer` class
-- **Documentation**: See `docs/enhanced_features.md`
+- **Path**: `scripts/features/game_features.py` and `scripts/features/player_features.py`
+- **Component**: Feature extraction and processing functions
+- **Documentation**: Comprehensive docstrings in code
 
-This component adds sophisticated metrics including fatigue modeling, team chemistry analysis, venue-specific factors, and matchup-specific historical performance. These features are integrated with the training pipeline through the `--use-enhanced-features` flag.
+These components add sophisticated metrics including matchup analysis, rest factors, and contextual performance indicators.
 
 ### 2. Prediction Testing Framework
 
@@ -52,19 +138,13 @@ A comprehensive testing framework has been implemented to evaluate model perform
 
 - **Path**: `scripts/test_predictions.py`
 - **Purpose**: Test predictions for upcoming NBA games using trained models
-- **Documentation**: See `docs/prediction_testing.md`
-
-The testing framework loads all trained models from the database, applies feature engineering to upcoming games, generates predictions, and provides detailed visualizations and analysis reports.
 
 ### 3. Performance Monitoring System
 
-A new monitoring system tracks model performance over time to identify opportunities for improvement:
+A monitoring system tracks model performance over time to identify opportunities for improvement:
 
 - **Path**: `scripts/monitor_performance.py`
 - **Purpose**: Track and visualize model performance metrics
-- **Documentation**: See `docs/performance_monitoring.md`
-
-This component extracts performance metrics from the database, analyzes trends, generates visualizations, and provides actionable recommendations based on model performance data.
 
 ### 4. Automatic Retraining System
 
@@ -72,82 +152,41 @@ An automatic update scheduler ensures models stay current with the latest NBA da
 
 - **Path**: `scripts/auto_update_scheduler.py`
 - **Purpose**: Automatically retrain models on a configurable schedule
-- **Documentation**: See `docs/auto_update_system.md`
-
-The scheduler supports various update frequencies (daily, weekly, post-game), includes smart update logic to avoid unnecessary retraining, and provides email notifications for update status.
-
-### 5. Integrated Training Pipeline
-
-The training pipeline has been enhanced to improve model training success rates and integration with new features:
-
-- **Path**: `src/training_pipeline.py`
-- **Updates**: Added support for enhanced features, improved model instantiation, fixed parameter mismatch issues
-
-All models (RandomForestModel, GradientBoostingModel, BayesianModel, CombinedGradientBoostingModel, EnsembleModel, and EnsembleStackingModel) now train successfully with proper error handling.
 
 ## Architecture Diagram
 
 ```
 ┌────────────────────┐     ┌─────────────────────┐     ┌──────────────────┐
-│  Data Acquisition  │────▶│  Feature Engineering │────▶│  Model Training  │
+│  Data Acquisition  │────▶│  Feature Engineering │────▶│  Model Prediction │
 └────────────────────┘     └─────────────────────┘     └──────────────────┘
          │                           ▲                          │
          │                           │                          │
          ▼                           │                          ▼
 ┌────────────────────┐              │              ┌──────────────────┐
-│     Live APIs      │              │              │ Prediction System │
+│     External APIs  │              │              │ Results Display  │
 └────────────────────┘              │              └──────────────────┘
          │                           │                          │
          │                           │                          │
          ▼                           │                          ▼
 ┌────────────────────┐     ┌─────────────────────┐     ┌──────────────────┐
-│  Database Storage  │◀────│ Performance Monitor │◀────│ Testing Framework │
+│  Data Storage      │◀────│ Utilities           │◀────│ Output Formatter │
 └────────────────────┘     └─────────────────────┘     └──────────────────┘
-         │                           ▲                          
-         │                           │                          
-         ▼                           │                          
-┌────────────────────┐              │              
-│  Auto-Update System│──────────────┘              
-└────────────────────┘                             
-```
-
-## Component Integration
-
-All new components are designed for seamless integration with the existing system:
-
-1. **Enhanced features** integrate with the existing feature engineering pipeline
-2. **Prediction testing** uses the same data sources and model loading logic as the main system
-3. **Performance monitoring** extracts data from the existing database tables
-4. **Automatic updates** use the same training pipeline with configurable options
-
-This modular approach allows for easy maintenance and future extensions to the system.
-
-## File Structure
-
-```
-nba-prediction-system/
-├── src/                # Source code
-│   ├── api_clients.py  # API client wrappers
-│   ├── get_nba_data.py # Data collection
-│   ├── process_data.py # Data processing
-│   └── ...
-├── data/               # Data storage
-├── logs/               # Application logs
-├── docs/               # Documentation
-│   └── architecture/   # Detailed architecture docs
-├── config/             # Configuration files
-└── tests/              # Unit and integration tests
 ```
 
 ## Technology Stack
 
 - Python 3.9+
-- PostgreSQL (for data storage)
-- XGBoost, LightGBM, scikit-learn (for modeling)
-- APScheduler (for task scheduling)
-- Flask (for REST API)
+- scikit-learn, XGBoost, LightGBM (for modeling)
+- pandas, numpy (for data processing)
+- requests (for API communication)
+- logging (for robust error tracking)
 
 ## Version History
+
+### Version 2.0.0 (2025-04-16)
+- Restructured codebase into modular organization
+- Improved error handling and removed synthetic data fallbacks
+- Enhanced compatibility with context-aware tools
 
 ### Version 1.0.0 (2025-04-14)
 - Initial architecture documentation

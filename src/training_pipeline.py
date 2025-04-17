@@ -57,6 +57,7 @@ from src.features.advanced_features_plus import EnhancedFeatureEngineer
 from src.models.base_model import BaseModel
 # Import SeasonManager for automatic season detection
 from src.utils.season_manager import SeasonManager
+from src.utils.model_registry import ModelRegistry, promote_best_models_to_production
 
 # Set up logging
 log_dir = Path("logs")
@@ -197,7 +198,7 @@ def engineer_training_features() -> bool:
 
 def train_all_models() -> Dict[str, Any]:
     """
-    Train all available prediction models
+    Train all available prediction models including enhanced player prop prediction models
     
     Returns:
         Dict[str, Any]: Dictionary with training results for each model
@@ -206,20 +207,26 @@ def train_all_models() -> Dict[str, Any]:
     
     results = {}
     
-    # Initialize models
-    prediction_type = "moneyline"
+    # Initialize models with enhanced versions
     models = {
         "RandomForestModel": RandomForestModel(version=1),
         "GradientBoostingModel": GradientBoostingModel(version=1),
-        "BayesianModel": BayesianModel(prediction_target=prediction_type, version=1),
-        "CombinedGradientBoostingModel": CombinedGradientBoostingModel(prediction_target=prediction_type, version=1)
+        "BayesianModel": BayesianModel(prediction_target="moneyline", version=1),
+        "CombinedGradientBoostingModel": CombinedGradientBoostingModel(prediction_target="moneyline", version=1)
+    }
+    
+    # Player prop specific models
+    player_prop_models = {
+        "PointsPredictor": GradientBoostingModel(version=1, prediction_target="points"),
+        "AssistsPredictor": RandomForestModel(version=1),  # Will be configured for assists
+        "ReboundsPredictor": GradientBoostingModel(version=1, prediction_target="rebounds")
     }
     
     # Initialize and train ensemble models after base models
     # We'll train them separately after the base models are trained
     ensemble_models = {
-        "EnsembleModel": EnsembleModel(prediction_target=prediction_type, version=1),
-        "EnsembleStackingModel": EnsembleStackingModel(prediction_target=prediction_type, version=1)
+        "EnsembleModel": EnsembleModel(prediction_target="moneyline", version=1),
+        "EnsembleStackingModel": EnsembleStackingModel(prediction_target="moneyline", version=1)
     }
     
     feature_path = Path("data/features/engineered_features.csv")
@@ -293,6 +300,44 @@ def train_all_models() -> Dict[str, Any]:
             else:
                 logger.warning(f"Target column '{target_col}' not found in features")
         
+        # Check if we have player stats data for training prop models
+        player_stats_path = Path("data/player_stats/season_averages.csv")
+        player_prop_training_ready = False
+        
+        if player_stats_path.exists():
+            try:
+                player_stats_df = pd.read_csv(player_stats_path)
+                if not player_stats_df.empty:
+                    logger.info(f"Found player stats data with {len(player_stats_df)} entries")
+                    player_prop_training_ready = True
+                    
+                    # Prepare feature datasets for each prop type
+                    # These targets are the actual stat values we want to predict
+                    prop_targets = {
+                        "points": "pts", 
+                        "assists": "ast", 
+                        "rebounds": "reb"
+                    }
+                    
+                    for prop_name, target_col in prop_targets.items():
+                        if target_col in player_stats_df.columns:
+                            # Extract relevant features for this prop
+                            prop_features = player_stats_df.drop([c for c in prop_targets.values() if c != target_col], axis=1, errors='ignore')
+                            
+                            # Get target values
+                            prop_target = player_stats_df[target_col]
+                            
+                            # Handle missing values
+                            prop_features = prop_features.fillna(0)
+                            
+                            data_splits[prop_name] = (prop_features, prop_target)
+                            logger.info(f"Prepared data for {prop_name} prediction with {len(prop_features)} samples")
+            except Exception as e:
+                logger.warning(f"Error loading player stats for prop models: {str(e)}")
+                player_prop_training_ready = False
+        else:
+            logger.warning(f"Player stats file not found: {player_stats_path}")
+        
         if not data_splits:
             logger.error("No valid target columns found in feature data")
             return {"status": "error", "message": "No valid targets found"}
@@ -306,21 +351,24 @@ def train_all_models() -> Dict[str, Any]:
     if perform_tuning:
         logger.info("Will perform hyperparameter tuning during model training")
         # Update model parameters to enable tuning
-        for model in models.values():
-            if hasattr(model, 'params') and 'tune_hyperparameters' in model.params:
+        for model in list(models.values()) + list(player_prop_models.values()):
+            if hasattr(model, 'params') and isinstance(model.params, dict):
                 model.params['tune_hyperparameters'] = True
     else:
         logger.info("Skipping hyperparameter tuning (use cached parameters)")
-        for model in models.values():
-            if hasattr(model, 'params') and 'tune_hyperparameters' in model.params:
+        for model in list(models.values()) + list(player_prop_models.values()):
+            if hasattr(model, 'params') and isinstance(model.params, dict):
                 model.params['tune_hyperparameters'] = False
 
     # Get a count of how many models we're expecting to train
-    expected_model_count = len(models) + len(ensemble_models)
-    logger.info(f"Attempting to train {expected_model_count} models ({len(models)} base models and {len(ensemble_models)} ensemble models)")
+    total_models = len(models) + len(ensemble_models)
+    if player_prop_training_ready:
+        total_models += len(player_prop_models)
+    logger.info(f"Attempting to train {total_models} models ({len(models)} base models, "
+                f"{len(player_prop_models)} player prop models, and {len(ensemble_models)} ensemble models)")
 
     # Train base models in parallel
-    logger.info("Training base models in parallel")
+    logger.info("Training base game prediction models in parallel")
     X_moneyline, y_moneyline = data_splits["moneyline"]
     base_results = train_models_parallel(models, X_moneyline, y_moneyline)
     
@@ -343,7 +391,7 @@ def train_all_models() -> Dict[str, Any]:
                 try:
                     metrics = model.evaluate(X_moneyline, y_moneyline)
                     results[model_name]["metrics"] = metrics
-                    logger.info(f"Metrics: {metrics}")
+                    logger.info(f"Metrics for {model_name}: {metrics}")
                 except Exception as e:
                     logger.warning(f"Error evaluating {model_name}: {str(e)}")
             
@@ -364,6 +412,102 @@ def train_all_models() -> Dict[str, Any]:
                 "error": res.get("error", "Unknown error during training")
             }
             logger.error(f"Error training {model_name}: {res.get('error', 'Unknown error')}")
+    
+    # Train player prop models if we have the data
+    if player_prop_training_ready:
+        logger.info("Training player prop prediction models")
+        prop_trained_models = {}
+        
+        # Configure and train each prop model
+        for model_name, model in player_prop_models.items():
+            prop_type = ""
+            
+            if "Points" in model_name:
+                prop_type = "points"
+            elif "Assists" in model_name:
+                prop_type = "assists"
+                # Configure RandomForest for assists prediction
+                if hasattr(model, 'train_for_player_props'):
+                    X_prop, y_prop = data_splits.get(prop_type, (None, None))
+                    if X_prop is not None and y_prop is not None:
+                        try:
+                            logger.info(f"Training {model_name} for {prop_type} prediction")
+                            start_time = time.time()
+                            model.train_for_player_props(X_prop, y_prop, prop_type=prop_type)
+                            duration = time.time() - start_time
+                            
+                            prop_trained_models[model_name] = model
+                            results[model_name] = {
+                                "status": "success",
+                                "training_time": duration,
+                                "prop_type": prop_type
+                            }
+                            
+                            # Save the model
+                            if hasattr(model, "save") and callable(model.save):
+                                model_path = model.save()
+                                results[model_name]["model_path"] = model_path
+                                logger.info(f"Saved {model_name} to {model_path}")
+                                
+                            logger.info(f"Successfully trained {model_name} for {prop_type} in {duration:.2f} seconds")
+                        except Exception as e:
+                            logger.error(f"Error training {model_name} for {prop_type}: {str(e)}")
+                            results[model_name] = {
+                                "status": "error",
+                                "error": str(e),
+                                "prop_type": prop_type
+                            }
+                else:
+                    logger.warning(f"{model_name} does not support player prop training method")
+            elif "Rebounds" in model_name:
+                prop_type = "rebounds"
+            
+            # If we haven't trained with the specialized method, use standard training
+            if model_name not in prop_trained_models and prop_type:
+                X_prop, y_prop = data_splits.get(prop_type, (None, None))
+                if X_prop is not None and y_prop is not None:
+                    try:
+                        logger.info(f"Training {model_name} for {prop_type} prediction")
+                        start_time = time.time()
+                        
+                        # For GradientBoostingModel, set prediction_target
+                        if hasattr(model, 'prediction_target'):
+                            model.prediction_target = prop_type
+                        
+                        # Use regression training for props
+                        if hasattr(model, 'train'):
+                            model.train(X_prop, y_prop, task='regression')
+                        else:
+                            model.fit(X_prop, y_prop)
+                            
+                        duration = time.time() - start_time
+                        
+                        prop_trained_models[model_name] = model
+                        results[model_name] = {
+                            "status": "success",
+                            "training_time": duration,
+                            "prop_type": prop_type
+                        }
+                        
+                        # Save the model
+                        if hasattr(model, "save") and callable(model.save):
+                            model_path = model.save()
+                            results[model_name]["model_path"] = model_path
+                            logger.info(f"Saved {model_name} to {model_path}")
+                            
+                        logger.info(f"Successfully trained {model_name} for {prop_type} in {duration:.2f} seconds")
+                    except Exception as e:
+                        logger.error(f"Error training {model_name} for {prop_type}: {str(e)}")
+                        results[model_name] = {
+                            "status": "error",
+                            "error": str(e),
+                            "prop_type": prop_type
+                        }
+        
+        # Add prop models to the trained models dictionary
+        trained_models.update(prop_trained_models)
+    else:
+        logger.warning("Skipping player prop model training due to missing player stats data")
     
     # Analyze feature importance from trained models
     if trained_models:
@@ -397,44 +541,47 @@ def train_all_models() -> Dict[str, Any]:
             if prediction_target not in data_splits:
                 logger.warning(f"No data split available for {prediction_target}, using moneyline")
                 prediction_target = "moneyline"
-                
-            X, y = data_splits[prediction_target]
             
-            # Train with checkpointing
+            X_target, y_target = data_splits[prediction_target]
+            
+            # Start timing
             start_time = time.time()
-            model, success = train_with_checkpointing(model_name, model, X, y)
-            training_time = time.time() - start_time
             
-            if success:
-                trained_models[model_name] = model
-                results[model_name] = {
-                    "status": "success",
-                    "training_time": training_time
-                }
-                
-                # Evaluate the model
-                if hasattr(model, "evaluate"):
-                    try:
-                        metrics = model.evaluate(X, y)
-                        results[model_name]["metrics"] = metrics
-                    except Exception as e:
-                        logger.warning(f"Error evaluating {model_name}: {str(e)}")
-                
-                # Save model if it has a save method
-                if hasattr(model, "save") and callable(model.save):
-                    try:
-                        model.save()
-                    except Exception as e:
-                        logger.warning(f"Error saving {model_name}: {str(e)}")
-                else:
-                    logger.warning(f"{model_name} does not have a save method, skipping persistence")
-                    
-                logger.info(f"Successfully trained {model_name} in {training_time:.2f} seconds")
+            # Train the ensemble model with the base models
+            if hasattr(model, "train"):
+                model.train(X_target, y_target)
+            elif hasattr(model, "fit"):
+                model.fit(X_target, y_target)
             else:
-                results[model_name] = {
-                    "status": "error",
-                    "error": "Failed to train model"
-                }
+                logger.error(f"{model_name} does not have train or fit method")
+                continue
+                
+            duration = time.time() - start_time
+            
+            # Evaluate the model if it has an evaluate method
+            metrics = {}
+            if hasattr(model, "evaluate"):
+                try:
+                    metrics = model.evaluate(X_target, y_target)
+                except Exception as e:
+                    logger.warning(f"Error evaluating {model_name}: {str(e)}")
+            
+            # Save the model if it has a save method
+            if hasattr(model, "save") and callable(model.save):
+                try:
+                    model.save()
+                    logger.info(f"Saved {model_name} to disk")
+                except Exception as e:
+                    logger.warning(f"Error saving {model_name}: {str(e)}")
+            
+            results[model_name] = {
+                "status": "success",
+                "training_time": duration,
+                "metrics": metrics
+            }
+            
+            logger.info(f"Successfully trained {model_name} in {duration:.2f} seconds")
+            
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
             results[model_name] = {
@@ -442,19 +589,18 @@ def train_all_models() -> Dict[str, Any]:
                 "error": str(e)
             }
     
-    # Save training results
-    try:
-        results_dir = Path("data/results")
-        results_dir.mkdir(exist_ok=True)
-        
-        with open(results_dir / f"training_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json", "w") as f:
-            json.dump(results, f, indent=2)
-    except Exception as e:
-        logger.error(f"Error saving training results: {str(e)}")
+    # Calculate overall statistics
+    success_count = sum(1 for res in results.values() if res.get("status") == "success")
+    total_time = sum(res.get("training_time", 0) for res in results.values())
     
-    # Count the number of successful models
-    successful_count = sum(1 for model_result in results.values() if model_result.get("status") == "success")
-    logger.info(f"Successfully trained {successful_count} models")
+    logger.info(f"Training pipeline completed: {success_count}/{total_models} models trained successfully")
+    logger.info(f"Total training time: {total_time:.2f} seconds")
+    
+    results["summary"] = {
+        "total_models": total_models,
+        "success_count": success_count,
+        "total_time": total_time
+    }
     
     return results
 
@@ -567,31 +713,64 @@ def deploy_models(results: Dict[str, Any]) -> bool:
     logger.info("Deploying trained models to production")
     
     try:
-        # Create production models directory
-        prod_dir = Path("data/production_models")
-        prod_dir.mkdir(exist_ok=True)
+        # Create a model registry instance
+        registry = ModelRegistry()
         
-        # Get list of successful models
-        successful_models = []
+        # Scan for existing models and register them
+        registry.scan_models()
+        
+        # Register and update metrics for newly trained models
+        promotion_candidates = []
+        
         for model_name, result in results.items():
-            if result["status"] == "success":
-                successful_models.append(model_name)
+            # Skip the summary result
+            if model_name == "summary":
+                continue
+                
+            if result.get("status") == "success":
+                # Get the model path from the results
+                model_path = result.get("model_path")
+                
+                # Skip if no model path found
+                if not model_path:
+                    logger.warning(f"No model path found for {model_name}, skipping registration")
+                    continue
+                    
+                # Try to extract model type and task from the model name
+                model_type = model_name
+                task = "default"
+                
+                # Handle player prop models specially
+                if "prop_type" in result:
+                    task = result["prop_type"]  # e.g., "points", "assists", "rebounds"
+                    
+                # Register the model
+                model_id = registry.register_model(model_path, metrics=result.get("metrics", {}))
+                
+                if model_id:
+                    logger.info(f"Registered model {model_id} in registry")
+                    promotion_candidates.append(model_id)
+                else:
+                    logger.warning(f"Failed to register model {model_name} in registry")
         
-        if not successful_models:
-            logger.error("No successful models to deploy")
-            return False
+        # Clean up old models to save disk space
+        removed_count = registry.cleanup_old_models()
+        logger.info(f"Cleaned up {removed_count} old models to save disk space")
         
-        # Deploy models
-        deployment_log = {
-            "deployed_at": datetime.now().isoformat(),
-            "models": successful_models
-        }
+        # Promote the best models to production based on metrics
+        promotion_results = promote_best_models_to_production()
         
-        with open(prod_dir / "deployment_log.json", "w") as f:
-            json.dump(deployment_log, f, indent=2)
+        # Log the results
+        if promotion_results["promoted"]:
+            logger.info(f"Promoted models to production: {', '.join(promotion_results['promoted'])}")
         
-        logger.info(f"Successfully deployed {len(successful_models)} models to production")
-        return True
+        if promotion_results["no_change"]:
+            logger.info(f"Models already in production: {', '.join(promotion_results['no_change'])}")
+            
+        if promotion_results["failed"]:
+            logger.warning(f"Failed to promote models: {', '.join(promotion_results['failed'])}")
+        
+        return len(promotion_results["failed"]) == 0
     except Exception as e:
         logger.error(f"Error deploying models: {str(e)}")
         return False

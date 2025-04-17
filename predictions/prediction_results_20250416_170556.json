@@ -1,0 +1,26 @@
+[
+  {
+    "away_team": "Heat",
+    "home_team": "Bulls",
+    "date": "2025-04-16",
+    "predictions": {
+      "EnsembleStacking_pred": 0.5,
+      "EnsembleStacking_home_win_proba": 0.5,
+      "GradientBoosting_pred": 0.6594486589852665,
+      "RandomForest_pred": true,
+      "RandomForest_home_win_proba": 0.6784037118798338
+    }
+  },
+  {
+    "away_team": "Mavericks",
+    "home_team": "Kings",
+    "date": "2025-04-16",
+    "predictions": {
+      "EnsembleStacking_pred": 0.5,
+      "EnsembleStacking_home_win_proba": 0.5,
+      "GradientBoosting_pred": 0.39197695181684705,
+      "RandomForest_pred": true,
+      "RandomForest_home_win_proba": 0.5057792289409937
+    }
+  }
+]

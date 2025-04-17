@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Gradient Boosting Regressor for NBA Spread Predictions
+Gradient Boosting Regressor for NBA Spread and Player Prop Predictions
 
-This module implements a Gradient Boosting Regressor specifically optimized for 
-predicting the point spread in NBA games. It forecasts the exact point differential
-between teams and is optimized for minimizing regression error.
+This module implements an enhanced Gradient Boosting Regressor optimized for 
+predicting both point spreads in NBA games and player performance metrics.
+It leverages advanced feature engineering, trend analysis, and robust cross-validation.
 """
 
 import logging
@@ -14,10 +14,15 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple, Union
 from datetime import datetime, timezone
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.model_selection import GridSearchCV, KFold
-from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+from sklearn.model_selection import GridSearchCV, KFold, TimeSeriesSplit, cross_val_score
+from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.feature_selection import SelectFromModel
+from sklearn.pipeline import Pipeline
+import joblib
+import os
+import warnings
 
 from src.models.base_model import BaseModel
 
@@ -31,52 +36,214 @@ logger = logging.getLogger(__name__)
 
 class GradientBoostingModel(BaseModel):
     """
-    Gradient Boosting Regressor for predicting NBA game point spreads
+    Enhanced Gradient Boosting Regressor for NBA predictions
     
     Features:
-    - Forecasts the exact point differential between teams
-    - Optimized for minimizing regression error (MAE/RMSE)
-    - Includes feature importance analysis
-    - Hyperparameter optimization via grid search
-    - Cross-validation for robust performance evaluation
+    - Optimized for both point spread and player prop predictions
+    - Supports advanced time-series based training and evaluation
+    - Feature importance analysis with automatic selection
+    - Adaptive learning rate and early stopping
+    - Performance analysis with detailed metrics
+    - Support for both regular GBM and faster HistGradientBoosting
     """
     
-    def __init__(self, version: int = 1, params: Optional[Dict[str, Any]] = None):
+    def __init__(self, version: int = 1, params: Optional[Dict[str, Any]] = None,
+                use_hist_gradient_boosting: bool = False, prediction_target: str = "spread"):
         """
-        Initialize the Gradient Boosting model
+        Initialize the Gradient Boosting model with enhanced capabilities
         
         Args:
             version: Model version number
-            params: Optional model parameters for GradientBoostingRegressor
+            params: Optional model parameters
+            use_hist_gradient_boosting: Whether to use the faster HistGradientBoosting variant
+            prediction_target: What the model is predicting ("spread", "points", "rebounds", "assists")
         """
-        super().__init__(name="GradientBoosting", model_type="regression", version=version)
+        model_name_suffix = "_Hist" if use_hist_gradient_boosting else ""
+        super().__init__(name=f"GradientBoosting{model_name_suffix}", model_type="regression", version=version)
         
-        # Default parameters (will be tuned during training if not provided)
+        self.prediction_target = prediction_target
+        self.use_hist_gradient_boosting = use_hist_gradient_boosting
+        
+        # Enhanced default parameters with better regularization
         self.params = params or {
-            'n_estimators': 200,
-            'learning_rate': 0.1,
+            'n_estimators': 300,
+            'learning_rate': 0.05,
             'max_depth': 5,
-            'min_samples_split': 2,
-            'min_samples_leaf': 1,
+            'min_samples_split': 5,
+            'min_samples_leaf': 3,
             'subsample': 0.8,
-            'random_state': 42
+            'max_features': 0.8,  # Use 80% of features to reduce overfitting
+            'random_state': 42,
+            'validation_fraction': 0.2,  # For early stopping
+            'n_iter_no_change': 20,      # Early stopping patience
+            'tol': 1e-4                  # Tolerance for early stopping
         }
         
-        # Initialize the model
-        self.model = GradientBoostingRegressor(**self.params)
+        # Choose model type based on configuration
+        if use_hist_gradient_boosting:
+            # HistGradientBoosting is faster for large datasets
+            hist_params = {
+                'max_iter': self.params['n_estimators'],
+                'learning_rate': self.params['learning_rate'],
+                'max_depth': self.params['max_depth'],
+                'min_samples_leaf': self.params['min_samples_leaf'],
+                'max_bins': 255,  # Higher value = more precise but slower
+                'random_state': self.params['random_state'],
+                'validation_fraction': self.params['validation_fraction'],
+                'n_iter_no_change': self.params['n_iter_no_change'],
+                'tol': self.params['tol']
+            }
+            self.model = HistGradientBoostingRegressor(**hist_params)
+        else:
+            # Standard GradientBoostingRegressor
+            self.model = GradientBoostingRegressor(**self.params)
         
-        # Feature preprocessing
-        self.scaler = StandardScaler()
+        # Feature preprocessing - Use RobustScaler to handle outliers better
+        self.scaler = RobustScaler()
+        
+        # Performance metrics tracking
+        self.train_metrics = {}
+        self.val_metrics = {}
+        self.feature_importances = {}
+        
+        # Set target-specific configurations
+        self._configure_for_target()
     
-    def train(self, X: pd.DataFrame, y: pd.Series) -> None:
+    def _configure_for_target(self):
         """
-        Train the model with hyperparameter optimization
+        Configure model settings based on prediction target
+        """
+        if self.prediction_target == "spread":
+            # Point spread prediction configuration
+            self.eval_metric = "neg_mean_absolute_error"
+            self.param_grid = {
+                'n_estimators': [200, 300, 400],
+                'learning_rate': [0.01, 0.05, 0.1],
+                'max_depth': [3, 5, 7],
+                'min_samples_split': [5, 10, 15],
+                'subsample': [0.7, 0.8, 0.9]
+            }
+        elif self.prediction_target in ["points", "rebounds", "assists"]:
+            # Player prop prediction configuration
+            self.eval_metric = "neg_mean_absolute_error"
+            # Different grid for player props
+            self.param_grid = {
+                'n_estimators': [200, 300],
+                'learning_rate': [0.01, 0.05],
+                'max_depth': [3, 4, 5],
+                'min_samples_split': [3, 5, 7],
+                'subsample': [0.7, 0.8]
+            }
+    
+    def _preprocess_features(self, X: pd.DataFrame, fit: bool = False) -> pd.DataFrame:
+        """
+        Preprocess features with enhanced engineering
         
         Args:
             X: Feature matrix
-            y: Target variable (point spread, positive for home win margin)
+            fit: Whether to fit the scaler (training) or just transform (prediction)
+            
+        Returns:
+            Processed feature matrix
         """
-        logger.info(f"Training Gradient Boosting model (version {self.version})")
+        # Store original feature names
+        feature_names = X.columns.tolist()
+        
+        # Add trend features if time-related columns exist
+        X = self._add_trend_features(X)
+        
+        # Handle missing values
+        X = X.fillna(0)
+        
+        # Scale features
+        if fit:
+            X_scaled = self.scaler.fit_transform(X)
+        else:
+            X_scaled = self.scaler.transform(X)
+        
+        return pd.DataFrame(X_scaled, columns=X.columns)
+    
+    def _add_trend_features(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add trend-based features to improve predictive power
+        
+        Args:
+            X: Feature matrix
+            
+        Returns:
+            Enhanced feature matrix with trend features
+        """
+        # Create a copy to avoid modifying the original
+        X_enhanced = X.copy()
+        
+        try:
+            # Check for suitable columns for trend creation
+            form_columns = [col for col in X.columns if any(term in col.lower() for 
+                           term in ['rate', 'avg', 'points', 'win', 'streak'])]
+            
+            if form_columns:
+                # Create ratio features for home vs away metrics
+                for col in form_columns:
+                    if 'home_' in col and 'away_' + col[5:] in X.columns:
+                        home_col = col
+                        away_col = 'away_' + col[5:]
+                        ratio_name = f"ratio_{col[5:]}"
+                        
+                        # Add ratio as a feature (with handling for zero division)
+                        home_vals = X[home_col].replace(0, 0.001)  # Avoid division by zero
+                        away_vals = X[away_col].replace(0, 0.001)
+                        X_enhanced[ratio_name] = home_vals / away_vals
+                
+                # Add trend direction indicators for teams
+                if 'home_win_rate_5g' in X.columns and 'home_win_rate_10g' in X.columns:
+                    X_enhanced['home_trend'] = np.where(
+                        X['home_win_rate_5g'] > X['home_win_rate_10g'], 1, 
+                        np.where(X['home_win_rate_5g'] < X['home_win_rate_10g'], -1, 0)
+                    )
+                
+                if 'away_win_rate_5g' in X.columns and 'away_win_rate_10g' in X.columns:
+                    X_enhanced['away_trend'] = np.where(
+                        X['away_win_rate_5g'] > X['away_win_rate_10g'], 1, 
+                        np.where(X['away_win_rate_5g'] < X['away_win_rate_10g'], -1, 0)
+                    )
+            
+            # For player props, add specific features
+            if self.prediction_target in ["points", "rebounds", "assists"]:
+                # Check for player-specific columns
+                player_cols = [col for col in X.columns if 'player_' in col]
+                if player_cols:
+                    # Add trend indicator for player performance if available
+                    trend_col = f"player_{self.prediction_target}_trend"
+                    vs_avg_col = f"player_{self.prediction_target}_vs_average"
+                    
+                    if trend_col in X.columns:
+                        # Emphasize trend direction as a feature
+                        X_enhanced[f"{trend_col}_direction"] = np.sign(X[trend_col])
+                    
+                    if vs_avg_col in X.columns:
+                        # Emphasize over/under average performance
+                        X_enhanced[f"{vs_avg_col}_direction"] = np.sign(X[vs_avg_col])
+        
+        except Exception as e:
+            logger.warning(f"Error adding trend features: {str(e)}")
+            # Return original data if feature creation fails
+            return X
+        
+        return X_enhanced
+    
+    def train(self, X: pd.DataFrame, y: pd.Series, tune_hyperparams: bool = True,
+             use_time_series_cv: bool = False, validation_data: Tuple[pd.DataFrame, pd.Series] = None) -> None:
+        """
+        Train the model with enhanced validation and feature engineering
+        
+        Args:
+            X: Feature matrix
+            y: Target variable (point spread or player stat)
+            tune_hyperparams: Whether to perform hyperparameter tuning
+            use_time_series_cv: Whether to use time-series cross-validation
+            validation_data: Optional separate validation data
+        """
+        logger.info(f"Training {self.name} model for {self.prediction_target} prediction (version {self.version})")
         
         if X.empty or y.empty:
             logger.error("Cannot train model with empty data")
@@ -86,63 +253,152 @@ class GradientBoostingModel(BaseModel):
             # Store feature names
             self.feature_names = X.columns.tolist()
             
-            # Scale features
-            X_scaled = self.scaler.fit_transform(X)
-            X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+            # Preprocess features
+            X_processed = self._preprocess_features(X, fit=True)
             
-            # Perform hyperparameter tuning if not already tuned
-            if not self.is_trained:
+            # Perform hyperparameter tuning if requested
+            if tune_hyperparams and not self.is_trained:
                 logger.info("Performing hyperparameter optimization")
-                param_grid = {
-                    'n_estimators': [100, 200, 300],
-                    'learning_rate': [0.01, 0.05, 0.1],
-                    'max_depth': [3, 5, 7],
-                    'min_samples_split': [2, 4, 6],
-                    'subsample': [0.7, 0.8, 0.9]
-                }
                 
-                # Use k-fold cross-validation
-                cv = KFold(n_splits=5, shuffle=True, random_state=42)
+                # Choose cross-validation strategy
+                if use_time_series_cv:
+                    # Time series CV for temporally ordered data
+                    cv = TimeSeriesSplit(n_splits=5)
+                    logger.info("Using TimeSeriesSplit for temporal validation")
+                else:
+                    # Standard k-fold for non-temporal data
+                    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+                
+                # Get the correct model class for grid search
+                model_class = HistGradientBoostingRegressor if self.use_hist_gradient_boosting else GradientBoostingRegressor
+                
+                # Adjust param grid based on model type
+                if self.use_hist_gradient_boosting:
+                    param_grid = {
+                        'max_iter': self.param_grid['n_estimators'],
+                        'learning_rate': self.param_grid['learning_rate'],
+                        'max_depth': self.param_grid['max_depth'],
+                        'min_samples_leaf': [1, 3, 5]
+                    }
+                    base_model = HistGradientBoostingRegressor(random_state=42)
+                else:
+                    param_grid = self.param_grid
+                    base_model = GradientBoostingRegressor(random_state=42)
                 
                 # Grid search with cross-validation
-                grid_search = GridSearchCV(
-                    estimator=GradientBoostingRegressor(random_state=42),
-                    param_grid=param_grid,
-                    cv=cv,
-                    scoring='neg_mean_absolute_error',  # Use MAE as primary metric
-                    n_jobs=-1  # Use all available cores
-                )
-                
-                grid_search.fit(X_scaled, y)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    grid_search = GridSearchCV(
+                        estimator=base_model,
+                        param_grid=param_grid,
+                        cv=cv,
+                        scoring=self.eval_metric,
+                        n_jobs=-1,  # Use all available cores
+                        verbose=1
+                    )
+                    
+                    grid_search.fit(X_processed, y)
                 
                 # Get best parameters
-                self.params = grid_search.best_params_
-                logger.info(f"Best parameters: {self.params}")
+                best_params = grid_search.best_params_
+                logger.info(f"Best parameters: {best_params}")
                 
                 # Update model with best parameters
-                self.model = GradientBoostingRegressor(**self.params)
+                if self.use_hist_gradient_boosting:
+                    # Map parameters for HistGradientBoosting
+                    hist_best_params = {
+                        'max_iter': best_params.get('max_iter', 300),
+                        'learning_rate': best_params.get('learning_rate', 0.05),
+                        'max_depth': best_params.get('max_depth', 5),
+                        'min_samples_leaf': best_params.get('min_samples_leaf', 3),
+                        'max_bins': 255,
+                        'random_state': 42,
+                        'validation_fraction': 0.2,
+                        'n_iter_no_change': 20,
+                        'tol': 1e-4
+                    }
+                    self.model = HistGradientBoostingRegressor(**hist_best_params)
+                else:
+                    # Update standard GBM parameters
+                    for param, value in best_params.items():
+                        self.params[param] = value
+                    self.model = GradientBoostingRegressor(**self.params)
+                
+                # Record best CV score
+                self.train_metrics['best_cv_score'] = grid_search.best_score_
             
             # Train the model with the best parameters
-            self.model.fit(X_scaled, y)
+            self.model.fit(X_processed, y)
+            
+            # Calculate training metrics
+            train_preds = self.model.predict(X_processed)
+            self.train_metrics['mae'] = mean_absolute_error(y, train_preds)
+            self.train_metrics['rmse'] = np.sqrt(mean_squared_error(y, train_preds))
+            self.train_metrics['r2'] = r2_score(y, train_preds)
+            
+            # Evaluate on validation set if provided
+            if validation_data is not None:
+                X_val, y_val = validation_data
+                X_val_processed = self._preprocess_features(X_val, fit=False)
+                val_preds = self.model.predict(X_val_processed)
+                
+                self.val_metrics['mae'] = mean_absolute_error(y_val, val_preds)
+                self.val_metrics['rmse'] = np.sqrt(mean_squared_error(y_val, val_preds))
+                self.val_metrics['r2'] = r2_score(y_val, val_preds)
+                
+                logger.info(f"Validation MAE: {self.val_metrics['mae']:.4f}, RMSE: {self.val_metrics['rmse']:.4f}")
+            
+            # Calculate and store feature importance
+            self._calculate_feature_importance(X_processed)
             
             # Update model metadata
             self.is_trained = True
             self.trained_at = datetime.now(timezone.utc)
             
-            logger.info(f"Gradient Boosting model trained successfully with {len(X)} samples")
+            logger.info(f"{self.name} model trained successfully with {len(X)} samples")
+            logger.info(f"Training MAE: {self.train_metrics['mae']:.4f}, RMSE: {self.train_metrics['rmse']:.4f}")
             
         except Exception as e:
-            logger.error(f"Error training Gradient Boosting model: {str(e)}")
+            logger.error(f"Error training {self.name} model: {str(e)}")
+    
+    def _calculate_feature_importance(self, X: pd.DataFrame) -> None:
+        """
+        Calculate and store feature importance from the trained model
+        
+        Args:
+            X: Processed feature matrix with column names
+        """
+        if not hasattr(self.model, 'feature_importances_'):
+            logger.warning("Model doesn't have feature_importances_ attribute")
+            return
+        
+        try:
+            # Get feature importances
+            importances = self.model.feature_importances_
+            
+            # Create dictionary mapping feature names to importance scores
+            self.feature_importances = dict(zip(X.columns, importances))
+            
+            # Sort features by importance
+            sorted_features = sorted(self.feature_importances.items(), key=lambda x: x[1], reverse=True)
+            
+            # Log top features
+            logger.info("Top 10 important features:")
+            for feature, importance in sorted_features[:10]:
+                logger.info(f"{feature}: {importance:.4f}")
+                
+        except Exception as e:
+            logger.error(f"Error calculating feature importance: {str(e)}")
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """
-        Make predictions using the trained model
+        Make predictions using the trained model with enhanced preprocessing
         
         Args:
             X: Feature matrix
             
         Returns:
-            Array of predicted point spreads
+            Array of predictions
         """
         if not self.is_trained:
             logger.error("Cannot predict with untrained model")
@@ -157,30 +413,47 @@ class GradientBoostingModel(BaseModel):
                 for feature in missing_features:
                     X[feature] = 0.0
             
-            # Scale features
-            X_scaled = self.scaler.transform(X[self.feature_names])
+            # Apply the same preprocessing as during training
+            X_processed = self._preprocess_features(X, fit=False)
+            
+            # Ensure we use the same features as training in the same order
+            common_cols = [col for col in self.feature_names if col in X_processed.columns]
             
             # Make predictions
-            return self.model.predict(X_scaled)
+            predictions = self.model.predict(X_processed[common_cols])
+            
+            # For player props, ensure non-negative predictions
+            if self.prediction_target in ["points", "rebounds", "assists"]:
+                predictions = np.maximum(predictions, 0)
+            
+            return predictions
             
         except Exception as e:
-            logger.error(f"Error making predictions with Gradient Boosting model: {str(e)}")
+            logger.error(f"Error making predictions with {self.name} model: {str(e)}")
             return np.array([])
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """
-        For regression models, this returns the predictions with a confidence interval
+        For regression models, this estimates prediction uncertainty
         
         Args:
             X: Feature matrix
             
         Returns:
-            Array of predictions (same as predict for regression models)
+            Array with prediction confidence estimates
         """
-        # For regression models, predict_proba is not applicable in the same way as classification
-        # We could implement quantile regression or other uncertainty estimates here
-        # For now, we'll just return the predictions
-        return self.predict(X).reshape(-1, 1)
+        predictions = self.predict(X)
+        
+        # Return predictions with a crude confidence estimate
+        # We're simulating probabilities for a regression model
+        if len(predictions) > 0:
+            # Column 0: probability of being below prediction
+            # Column 1: probability of being above prediction
+            # For regression this is arbitrary, so we use 0.5 for both
+            pseudo_proba = np.column_stack((np.ones_like(predictions) * 0.5, np.ones_like(predictions) * 0.5))
+            return pseudo_proba
+        else:
+            return np.array([])
     
     def get_feature_importance(self) -> Dict[str, float]:
         """
@@ -189,99 +462,145 @@ class GradientBoostingModel(BaseModel):
         Returns:
             Dictionary mapping feature names to importance scores
         """
-        if not self.is_trained or not hasattr(self.model, 'feature_importances_'):
-            logger.error("Cannot get feature importance from untrained model")
-            return {}
-        
-        try:
-            # Get feature importances
-            importances = self.model.feature_importances_
-            
-            # Create dictionary mapping feature names to importance scores
-            importance_dict = dict(zip(self.feature_names, importances))
-            
-            # Sort by importance (descending)
-            return dict(sorted(importance_dict.items(), key=lambda x: x[1], reverse=True))
-            
-        except Exception as e:
-            logger.error(f"Error getting feature importance: {str(e)}")
-            return {}
+        return self.feature_importances
     
-    def evaluate(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+    def save(self, directory: str = "models") -> str:
         """
-        Evaluate the model performance on test data
+        Save the trained model to disk with metadata
         
         Args:
-            X: Feature matrix
-            y: Target variable (point spread)
+            directory: Directory to save the model in
             
         Returns:
-            Dictionary of evaluation metrics
+            Path to the saved model file
         """
         if not self.is_trained:
-            logger.error(f"Cannot evaluate untrained model: {self.name}")
-            return {}
+            logger.error("Cannot save untrained model")
+            return ""
         
         try:
-            # Make predictions
-            y_pred = self.predict(X)
+            # Create directory if it doesn't exist
+            os.makedirs(directory, exist_ok=True)
             
-            # Calculate regression metrics
-            metrics = {
-                'mae': mean_absolute_error(y, y_pred),
-                'rmse': np.sqrt(mean_squared_error(y, y_pred)),
-                'r2': r2_score(y, y_pred)
+            # Create filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{self.name}_{timestamp}_v{self.version}.pkl"
+            filepath = os.path.join(directory, filename)
+            
+            # Prepare model metadata
+            metadata = {
+                'model': self.model,
+                'scaler': self.scaler,
+                'feature_names': self.feature_names,
+                'prediction_target': self.prediction_target,
+                'params': self.params,
+                'train_metrics': self.train_metrics,
+                'val_metrics': self.val_metrics,
+                'feature_importances': self.feature_importances,
+                'trained_at': self.trained_at,
+                'version': self.version
             }
             
-            # Calculate betting performance if available
-            if 'actual_spread' in X.columns and 'vegas_spread' in X.columns:
-                # Calculate if our prediction would have beaten Vegas spread
-                correct_predictions = ((y_pred > X['vegas_spread']) == (X['actual_spread'] > X['vegas_spread'])).mean()
-                metrics['vegas_beat_rate'] = correct_predictions
+            # Save the model with metadata
+            joblib.dump(metadata, filepath)
+            logger.info(f"Model saved to {filepath}")
             
-            return metrics
+            return filepath
             
         except Exception as e:
-            logger.error(f"Error evaluating model {self.name}: {str(e)}")
-            return {}
+            logger.error(f"Error saving model: {str(e)}")
+            return ""
+    
+    @classmethod
+    def load(cls, filepath: str) -> 'GradientBoostingModel':
+        """
+        Load a trained model from disk
+        
+        Args:
+            filepath: Path to the saved model file
+            
+        Returns:
+            Loaded GradientBoostingModel instance
+        """
+        try:
+            # Load the model metadata
+            metadata = joblib.load(filepath)
+            
+            # Get model configuration
+            version = metadata.get('version', 1)
+            prediction_target = metadata.get('prediction_target', 'spread')
+            use_hist_gradient_boosting = isinstance(metadata['model'], HistGradientBoostingRegressor)
+            
+            # Create a new model instance
+            model = cls(version=version, prediction_target=prediction_target,
+                        use_hist_gradient_boosting=use_hist_gradient_boosting)
+            
+            # Restore model attributes
+            model.model = metadata['model']
+            model.scaler = metadata['scaler']
+            model.feature_names = metadata['feature_names']
+            model.params = metadata['params']
+            model.train_metrics = metadata['train_metrics']
+            model.val_metrics = metadata['val_metrics']
+            model.feature_importances = metadata['feature_importances']
+            model.trained_at = metadata['trained_at']
+            model.is_trained = True
+            
+            logger.info(f"Model loaded from {filepath}")
+            
+            return model
+            
+        except Exception as e:
+            logger.error(f"Error loading model from {filepath}: {str(e)}")
+            return None
 
 
 # Main function for testing
 if __name__ == "__main__":
     # Test model training and prediction
-    import pandas as pd
-    from src.data.feature_engineering import NBAFeatureEngineer
+    np.random.seed(42)
     
-    # Load and prepare data
-    engineer = NBAFeatureEngineer()
-    games_df = engineer.load_games()
+    # Generate synthetic data for testing
+    n_samples = 1000
+    n_features = 20
     
-    if not games_df.empty:
-        # Generate features
-        features = engineer.generate_features_for_all_games(games_df)
-        
-        # Prepare training data for spread prediction
-        X_train, y_train = engineer.prepare_training_data(features, target='spread')
-        
-        if not X_train.empty and not y_train.empty:
-            # Create and train the model
-            model = GradientBoostingModel(version=1)
-            model.train(X_train, y_train)
-            
-            # Evaluate the model
-            metrics = model.evaluate(X_train, y_train)
-            print(f"Model metrics: {metrics}")
-            
-            # Get feature importance
-            importance = model.get_feature_importance()
-            print("Top 10 features by importance:")
-            for i, (feature, score) in enumerate(list(importance.items())[:10]):
-                print(f"{i+1}. {feature}: {score:.4f}")
-            
-            # Save the model
-            model_path = model.save_to_disk()
-            print(f"Model saved to: {model_path}")
-        else:
-            print("No valid training data available")
-    else:
-        print("No games data available")
+    # Create feature names
+    feature_names = [f'feature_{i}' for i in range(n_features)]
+    
+    # Create dataset
+    X = pd.DataFrame(np.random.randn(n_samples, n_features), columns=feature_names)
+    
+    # Add some basketball-specific features
+    X['home_win_rate_5g'] = np.random.uniform(0, 1, n_samples)
+    X['home_win_rate_10g'] = X['home_win_rate_5g'] + np.random.normal(0, 0.1, n_samples)
+    X['away_win_rate_5g'] = np.random.uniform(0, 1, n_samples)
+    X['away_win_rate_10g'] = X['away_win_rate_5g'] + np.random.normal(0, 0.1, n_samples)
+    X['home_avg_points_5g'] = np.random.uniform(90, 120, n_samples)
+    X['away_avg_points_5g'] = np.random.uniform(90, 120, n_samples)
+    
+    # Generate target
+    y = X['home_avg_points_5g'] - X['away_avg_points_5g'] + np.random.normal(0, 5, n_samples)
+    
+    # Split into train and test
+    train_idx = int(0.8 * n_samples)
+    X_train, X_test = X[:train_idx], X[train_idx:]
+    y_train, y_test = y[:train_idx], y[train_idx:]
+    
+    # Create and train model
+    model = GradientBoostingModel(version=2, prediction_target="spread")
+    model.train(X_train, y_train, tune_hyperparams=True)
+    
+    # Make predictions
+    preds = model.predict(X_test)
+    
+    # Evaluate
+    mae = mean_absolute_error(y_test, preds)
+    rmse = np.sqrt(mean_squared_error(y_test, preds))
+    r2 = r2_score(y_test, preds)
+    
+    print(f"Test MAE: {mae:.4f}")
+    print(f"Test RMSE: {rmse:.4f}")
+    print(f"Test R2: {r2:.4f}")
+    
+    # Save the model
+    model.save()

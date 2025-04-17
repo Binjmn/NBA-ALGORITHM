@@ -1,0 +1,68 @@
+{
+    "18421253": {
+        "game_details": {
+            "game_id": 18421253,
+            "date": "2025-04-16",
+            "home_team": {
+                "id": 5,
+                "name": "Bulls",
+                "abbreviation": "CHI"
+            },
+            "away_team": {
+                "id": 16,
+                "name": "Heat",
+                "abbreviation": "MIA"
+            }
+        },
+        "prediction": {
+            "predicted_winner": "home",
+            "home_win_probability": 0.5,
+            "away_win_probability": 0.5,
+            "win_probability": 0.5,
+            "confidence": 0.7
+        },
+        "model_predictions": {
+            "RandomForestModel": {
+                "home_win_probability": 0.5,
+                "away_win_probability": 0.5
+            },
+            "ensemble": {
+                "home_win_probability": 0.5,
+                "away_win_probability": 0.5
+            }
+        }
+    },
+    "18421908": {
+        "game_details": {
+            "game_id": 18421908,
+            "date": "2025-04-16",
+            "home_team": {
+                "id": 26,
+                "name": "Kings",
+                "abbreviation": "SAC"
+            },
+            "away_team": {
+                "id": 7,
+                "name": "Mavericks",
+                "abbreviation": "DAL"
+            }
+        },
+        "prediction": {
+            "predicted_winner": "home",
+            "home_win_probability": 0.5,
+            "away_win_probability": 0.5,
+            "win_probability": 0.5,
+            "confidence": 0.7
+        },
+        "model_predictions": {
+            "RandomForestModel": {
+                "home_win_probability": 0.5,
+                "away_win_probability": 0.5
+            },
+            "ensemble": {
+                "home_win_probability": 0.5,
+                "away_win_probability": 0.5
+            }
+        }
+    }
+}
