@@ -23,7 +23,8 @@ from nba_algorithm.data import (
     validate_api_data,
     check_api_keys
 )
-from nba_algorithm.data.team_data import fetch_team_stats
+from nba_algorithm.data.team_data import fetch_team_stats, fetch_all_teams
+from nba_algorithm.data.nba_teams import get_active_nba_teams, filter_games_to_active_teams
 from nba_algorithm.data.odds_data import fetch_betting_odds
 from nba_algorithm.features import prepare_game_features
 from nba_algorithm.models import (
@@ -239,6 +240,20 @@ def main():
             logger.warning("No historical game data available")
         else:
             logger.info(f"Fetched {len(historical_games)} historical games")
+            
+        # Filter for active NBA teams only
+        logger.info("Filtering for active NBA teams only")
+        try:
+            # Get current NBA teams
+            current_teams = fetch_all_teams()
+            valid_nba_teams = get_active_nba_teams(current_teams)
+            logger.info(f"Identified {len(valid_nba_teams)} active NBA teams")
+            
+            # Filter historical games to include only games between active NBA teams
+            historical_games = filter_games_to_active_teams(historical_games, valid_nba_teams)
+            logger.info(f"Using {len(historical_games)} filtered historical games for prediction features")
+        except Exception as e:
+            logger.warning(f"Error filtering for active NBA teams: {str(e)}. Using all historical games.")
         
         # Validate data
         logger.info("Validating API data")
