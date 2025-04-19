@@ -20,9 +20,10 @@ from pathlib import Path
 from typing import Optional
 
 # Base directories
+ROOT_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))  # Get the project root directory
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent
 DATA_DIR = BASE_DIR / "data"
-MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR = ROOT_DIR / "models"  # Use the models directory in the project root
 OUTPUT_DIR = BASE_DIR / "output"
 
 # Create directories if they don't exist

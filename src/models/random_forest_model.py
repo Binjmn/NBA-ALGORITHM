@@ -85,6 +85,10 @@ class RandomForestModel(BaseModel):
         Returns:
             Processed feature matrix
         """
+        if X.empty:
+            logger.error("Cannot preprocess empty feature matrix")
+            raise ValueError("Feature matrix is empty")
+            
         # Store original feature names
         feature_names = X.columns.tolist()
         
@@ -159,7 +163,7 @@ class RandomForestModel(BaseModel):
                 # Check for player-specific columns
                 player_cols = [col for col in X.columns if 'player_' in col]
                 stat_cols = [col for col in X.columns if any(stat in col for stat in 
-                             ['points', 'assists', 'rebounds', 'blocks', 'steals'])]
+                              ['points', 'assists', 'rebounds', 'blocks', 'steals'])]
                 
                 if player_cols:
                     # Add interaction terms between player stats and defense ratings
@@ -217,7 +221,7 @@ class RandomForestModel(BaseModel):
         
         if X.empty or y.empty:
             logger.error("Cannot train model with empty data")
-            return
+            raise ValueError("Training data is empty")
         
         try:
             # Store feature names
@@ -283,6 +287,7 @@ class RandomForestModel(BaseModel):
             
         except Exception as e:
             logger.error(f"Error training Random Forest model: {str(e)}")
+            raise ValueError(f"Failed to train model: {str(e)}")
     
     def train_for_player_props(self, X: pd.DataFrame, y: pd.Series, prop_type: str, use_time_series: bool = False) -> None:
         """
@@ -298,7 +303,7 @@ class RandomForestModel(BaseModel):
         
         if X.empty or y.empty:
             logger.error("Cannot train model with empty data")
-            return
+            raise ValueError("Training data for player props is empty")
         
         try:
             # Set model type to regression for player props
@@ -355,6 +360,7 @@ class RandomForestModel(BaseModel):
             
             # Store metadata
             self.prop_type = prop_type
+            self.params = best_params
             self.is_trained = True
             self.trained_at = datetime.now(timezone.utc)
             
@@ -362,6 +368,7 @@ class RandomForestModel(BaseModel):
             
         except Exception as e:
             logger.error(f"Error training Random Forest model for {prop_type}: {str(e)}")
+            raise ValueError(f"Failed to train model for {prop_type}: {str(e)}")
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """
@@ -375,26 +382,31 @@ class RandomForestModel(BaseModel):
         """
         if not self.is_trained:
             logger.error("Cannot predict with untrained model")
-            return np.array([])
+            raise ValueError("Model is not trained")
         
+        if X.empty:
+            logger.error("Cannot predict with empty feature matrix")
+            raise ValueError("Prediction data is empty")
+            
         try:
             # Ensure all expected features are present
             missing_features = [f for f in self.feature_names if f not in X.columns]
             if missing_features:
-                logger.warning(f"Missing features in prediction data: {missing_features}")
-                # Add missing features with zeros
-                for feature in missing_features:
-                    X[feature] = 0.0
+                logger.error(f"Missing features in prediction data: {missing_features}")
+                raise ValueError(f"Missing required features for prediction: {missing_features}")
             
             # Preprocess features
             X_processed = self._preprocess_features(X, fit=False)
             
             # Make predictions
-            return self.classifier.predict(X_processed)
+            if self.model_type == 'classification':
+                return self.classifier.predict(X_processed)
+            else:  # regression
+                return self.regressor.predict(X_processed)
             
         except Exception as e:
             logger.error(f"Error making predictions with Random Forest model: {str(e)}")
-            return np.array([])
+            raise RuntimeError(f"Prediction failed: {str(e)}")
     
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """
@@ -404,20 +416,26 @@ class RandomForestModel(BaseModel):
             X: Feature matrix
             
         Returns:
-            Array of shape (n_samples, 2) with probabilities for away win (0) and home win (1)
+            Array of class probabilities
         """
         if not self.is_trained:
-            logger.error("Cannot predict probabilities with untrained model")
-            return np.array([])
+            logger.error("Cannot predict with untrained model")
+            raise ValueError("Model is not trained")
         
+        if self.model_type != 'classification':
+            logger.error("predict_proba is only available for classification models")
+            raise ValueError("Cannot call predict_proba on a regression model")
+        
+        if X.empty:
+            logger.error("Cannot predict with empty feature matrix")
+            raise ValueError("Prediction data is empty")
+            
         try:
             # Ensure all expected features are present
             missing_features = [f for f in self.feature_names if f not in X.columns]
             if missing_features:
-                logger.warning(f"Missing features in prediction data: {missing_features}")
-                # Add missing features with zeros
-                for feature in missing_features:
-                    X[feature] = 0.0
+                logger.error(f"Missing features in prediction data: {missing_features}")
+                raise ValueError(f"Missing required features for prediction: {missing_features}")
             
             # Preprocess features
             X_processed = self._preprocess_features(X, fit=False)
@@ -427,40 +445,57 @@ class RandomForestModel(BaseModel):
             
         except Exception as e:
             logger.error(f"Error predicting probabilities with Random Forest model: {str(e)}")
-            return np.array([])
+            raise RuntimeError(f"Probability prediction failed: {str(e)}")
     
-    def predict_player_stats(self, X: pd.DataFrame) -> np.ndarray:
+    def predict_player_stat(self, X: pd.DataFrame, prop_type: str = None) -> np.ndarray:
         """
-        Predict player statistics using the trained model
+        Make predictions for player statistical performance
         
         Args:
             X: Feature matrix
+            prop_type: Type of prop to predict (uses self.prop_type if None)
             
         Returns:
-            Array of predicted player statistics
+            Array of predicted statistical values
         """
         if not self.is_trained:
-            logger.error("Cannot predict player statistics with untrained model")
-            return np.array([])
+            logger.error("Cannot predict with untrained model")
+            raise ValueError("Model is not trained")
+        
+        if X.empty:
+            logger.error("Cannot predict with empty feature matrix")
+            raise ValueError("Prediction data is empty")
+            
+        # Check if model is trained for player props
+        if self.model_type != 'regression' or not hasattr(self, 'prop_type'):
+            logger.error("Model is not trained for player prop predictions")
+            raise ValueError("Model is not configured for player prop predictions")
+        
+        # Use stored prop type if none provided
+        if prop_type is None:
+            prop_type = self.prop_type
         
         try:
             # Ensure all expected features are present
             missing_features = [f for f in self.feature_names if f not in X.columns]
             if missing_features:
-                logger.warning(f"Missing features in prediction data: {missing_features}")
-                # Add missing features with zeros
-                for feature in missing_features:
-                    X[feature] = 0.0
+                logger.error(f"Missing features in player prop prediction data: {missing_features}")
+                raise ValueError(f"Missing required features for {prop_type} prediction: {missing_features}")
             
             # Preprocess features
             X_processed = self._preprocess_features(X, fit=False, task='regression')
             
-            # Predict player statistics
-            return self.regressor.predict(X_processed)
+            # Make predictions
+            predictions = self.regressor.predict(X_processed)
+            
+            # Ensure predictions are non-negative (player stats can't be negative)
+            predictions = np.maximum(predictions, 0)
+            
+            return predictions
             
         except Exception as e:
-            logger.error(f"Error predicting player statistics with Random Forest model: {str(e)}")
-            return np.array([])
+            logger.error(f"Error predicting {prop_type} with Random Forest model: {str(e)}")
+            raise RuntimeError(f"Player stat prediction failed: {str(e)}")
     
     def get_feature_importance(self) -> Dict[str, float]:
         """
@@ -469,190 +504,208 @@ class RandomForestModel(BaseModel):
         Returns:
             Dictionary mapping feature names to importance scores
         """
-        if not self.is_trained or not hasattr(self.classifier, 'feature_importances_'):
+        if not self.is_trained:
             logger.error("Cannot get feature importance from untrained model")
             return {}
         
         try:
-            # Get feature importances
-            importances = self.classifier.feature_importances_
+            # Get the trained model
+            if self.model_type == 'classification':
+                model = self.classifier
+            else:  # regression
+                model = self.regressor
             
-            # Create dictionary mapping feature names to importance scores
-            importance_dict = dict(zip(self.feature_names, importances))
+            # Extract feature importance
+            importances = model.feature_importances_
             
-            # Sort by importance (descending)
-            return dict(sorted(importance_dict.items(), key=lambda x: x[1], reverse=True))
+            # Map to feature names
+            feature_importance = {}
+            for i, feature in enumerate(self.feature_names):
+                feature_importance[feature] = float(importances[i])
+            
+            # Sort by importance (highest to lowest)
+            return dict(sorted(feature_importance.items(), key=lambda x: x[1], reverse=True))
             
         except Exception as e:
             logger.error(f"Error getting feature importance: {str(e)}")
             return {}
     
-    def save(self, directory: str = "models") -> str:
+    def calculate_uncertainty(self, X: pd.DataFrame) -> np.ndarray:
         """
-        Save the trained model to disk with metadata
+        Calculate prediction uncertainty using random forest's internal variance
         
         Args:
-            directory: Directory to save the model in
+            X: Feature matrix
             
         Returns:
-            Path to the saved model file
+            Array of uncertainty values for each prediction
+        """
+        if not self.is_trained:
+            logger.error("Cannot calculate uncertainty with untrained model")
+            return np.array([])
+        
+        if X.empty:
+            logger.error("Cannot calculate uncertainty with empty feature matrix")
+            return np.array([])
+            
+        try:
+            # Preprocess features
+            X_processed = self._preprocess_features(X, fit=False, task=self.model_type)
+            
+            # Get predictions from all trees in the forest
+            if self.model_type == 'classification':
+                model = self.classifier
+                # For classification, get std dev of probability predictions
+                predictions = np.array([tree.predict_proba(X_processed) for tree in model.estimators_])
+                # Standard deviation across trees (higher means more uncertainty)
+                uncertainty = np.std(predictions, axis=0)
+                # Take average across classes for a single uncertainty value per sample
+                uncertainty = np.mean(uncertainty, axis=1)
+            else:  # regression
+                model = self.regressor
+                # For regression, get std dev of value predictions
+                predictions = np.array([tree.predict(X_processed) for tree in model.estimators_])
+                # Standard deviation across trees
+                uncertainty = np.std(predictions, axis=0)
+            
+            return uncertainty
+            
+        except Exception as e:
+            logger.error(f"Error calculating prediction uncertainty: {str(e)}")
+            return np.array([])
+    
+    def record_performance(self, metrics: Dict[str, float], prediction_type: str, num_predictions: int, time_window: str = '7d') -> bool:
+        """
+        Record the performance metrics of the model for a specific prediction type and time window
+        
+        Args:
+            metrics: Dictionary of performance metrics (accuracy, precision, recall, f1, etc.)
+            prediction_type: Type of prediction (moneyline, spread, total, etc.)
+            num_predictions: Number of predictions made
+            time_window: Time window for the metrics (e.g., '7d' for 7 days)
+            
+        Returns:
+            bool: True if performance was successfully recorded
+        """
+        try:
+            # Create the performance data structure
+            timestamp = datetime.now(timezone.utc).isoformat()
+            performance_data = {
+                'model_name': self.name,
+                'model_version': self.version,
+                'prediction_type': prediction_type,
+                'metrics': metrics,
+                'num_predictions': num_predictions,
+                'timestamp': timestamp,
+                'time_window': time_window
+            }
+            
+            # Save the performance data to disk
+            performance_dir = os.path.join('data', 'performance')
+            os.makedirs(performance_dir, exist_ok=True)
+            
+            # Create a unique filename based on model, prediction type, and timestamp
+            filename = f"{self.name.lower()}_{prediction_type}_{int(datetime.now().timestamp())}.json"
+            file_path = os.path.join(performance_dir, filename)
+            
+            # Save as JSON
+            import json
+            with open(file_path, 'w') as f:
+                json.dump(performance_data, f, indent=2)
+                
+            logger.info(f"Model performance recorded to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error recording model performance: {str(e)}")
+            return False
+    
+    def save_model(self, path: str) -> bool:
+        """
+        Save the model to a file
+        
+        Args:
+            path: Path to save the model
+            
+        Returns:
+            True if successful, False otherwise
         """
         if not self.is_trained:
             logger.error("Cannot save untrained model")
-            return ""
+            return False
         
         try:
-            # Create directory if it doesn't exist
-            os.makedirs(directory, exist_ok=True)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             
-            # Create filename with timestamp and model type info
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            model_type_suffix = self.model_type
-            if hasattr(self, 'prop_type'):
-                model_type_suffix = f"{self.prop_type}_{model_type_suffix}"
-                
-            filename = f"{self.name}_{model_type_suffix}_{timestamp}_v{self.version}.pkl"
-            filepath = os.path.join(directory, filename)
-            
-            # Prepare model metadata
-            metadata = {
-                'classifier': self.classifier,
-                'regressor': self.regressor,
-                'scaler': self.scaler,
-                'robust_scaler': self.robust_scaler,
-                'feature_names': self.feature_names,
+            # Create a dictionary with model data
+            model_data = {
+                'name': self.name,
+                'version': self.version,
                 'model_type': self.model_type,
-                'prop_type': getattr(self, 'prop_type', None),
                 'params': self.params,
+                'feature_names': self.feature_names,
                 'trained_at': self.trained_at,
-                'version': self.version
+                'classifier': self.classifier if self.model_type == 'classification' else None,
+                'regressor': self.regressor if self.model_type == 'regression' else None,
+                'scaler': self.scaler,
+                'robust_scaler': self.robust_scaler
             }
             
-            # Save the model with metadata
-            joblib.dump(metadata, filepath)
-            logger.info(f"Model saved to {filepath}")
+            if hasattr(self, 'prop_type'):
+                model_data['prop_type'] = self.prop_type
             
-            return filepath
+            # Save model data
+            joblib.dump(model_data, path)
+            
+            logger.info(f"Model saved to {path}")
+            return True
             
         except Exception as e:
             logger.error(f"Error saving model: {str(e)}")
-            return ""
+            return False
     
-    @classmethod
-    def load(cls, filepath: str) -> 'RandomForestModel':
+    def load_model(self, path: str) -> bool:
         """
-        Load a trained model from disk
+        Load the model from a file
         
         Args:
-            filepath: Path to the saved model file
+            path: Path to load the model from
             
         Returns:
-            Loaded RandomForestModel instance
+            True if successful, False otherwise
         """
         try:
-            # Load the model metadata
-            metadata = joblib.load(filepath)
+            if not os.path.exists(path):
+                logger.error(f"Model file not found: {path}")
+                return False
             
-            # Get model configuration
-            version = metadata.get('version', 1)
+            # Load model data
+            model_data = joblib.load(path)
             
-            # Create a new model instance
-            model = cls(version=version)
+            # Update model attributes
+            self.name = model_data['name']
+            self.version = model_data['version']
+            self.model_type = model_data['model_type']
+            self.params = model_data['params']
+            self.feature_names = model_data['feature_names']
+            self.trained_at = model_data['trained_at']
             
-            # Restore model attributes
-            model.classifier = metadata['classifier']
-            model.regressor = metadata['regressor']
-            model.scaler = metadata['scaler']
-            model.robust_scaler = metadata['robust_scaler']
-            model.feature_names = metadata['feature_names']
-            model.model_type = metadata['model_type']
-            if metadata.get('prop_type'):
-                model.prop_type = metadata['prop_type']
-            model.params = metadata['params']
-            model.trained_at = metadata['trained_at']
-            model.is_trained = True
+            if self.model_type == 'classification':
+                self.classifier = model_data['classifier']
+            else:  # regression
+                self.regressor = model_data['regressor']
             
-            logger.info(f"Model loaded from {filepath}")
+            self.scaler = model_data['scaler']
+            self.robust_scaler = model_data['robust_scaler']
             
-            return model
+            if 'prop_type' in model_data:
+                self.prop_type = model_data['prop_type']
+            
+            self.is_trained = True
+            
+            logger.info(f"Model loaded from {path}")
+            return True
             
         except Exception as e:
-            logger.error(f"Error loading model from {filepath}: {str(e)}")
-            return None
-
-
-# Main function for testing
-if __name__ == "__main__":
-    # Test model training and prediction
-    np.random.seed(42)
-    
-    # Generate synthetic data for classification (moneyline)
-    n_samples = 1000
-    n_features = 20
-    
-    # Create feature names
-    feature_names = [f'feature_{i}' for i in range(n_features)]
-    
-    # Create dataset
-    X = pd.DataFrame(np.random.randn(n_samples, n_features), columns=feature_names)
-    
-    # Add some basketball-specific features
-    X['home_win_rate_5g'] = np.random.uniform(0, 1, n_samples)
-    X['home_win_rate_10g'] = X['home_win_rate_5g'] + np.random.normal(0, 0.1, n_samples)
-    X['away_win_rate_5g'] = np.random.uniform(0, 1, n_samples)
-    X['away_win_rate_10g'] = X['away_win_rate_5g'] + np.random.normal(0, 0.1, n_samples)
-    
-    # Generate classification target (win/loss)
-    y_class = (X['home_win_rate_5g'] > X['away_win_rate_5g']).astype(int)
-    
-    # Split into train and test
-    train_idx = int(0.8 * n_samples)
-    X_train, X_test = X[:train_idx], X[train_idx:]
-    y_train, y_test = y_class[:train_idx], y_class[train_idx:]
-    
-    # Test classification model
-    model = RandomForestModel(version=2)
-    model.train(X_train, y_train, task='classification')
-    
-    # Make predictions
-    preds = model.predict(X_test)
-    proba = model.predict_proba(X_test)
-    
-    # Evaluate classification
-    accuracy = accuracy_score(y_test, preds)
-    print(f"Classification accuracy: {accuracy:.4f}")
-    
-    # Save the model
-    model_path = model.save()
-    print(f"Model saved to: {model_path}")
-    
-    # Now test regression model for player props
-    # Generate synthetic player stat data
-    X_player = pd.DataFrame(np.random.randn(n_samples, n_features), columns=feature_names)
-    
-    # Add player-specific features
-    X_player['player_points'] = np.random.uniform(10, 30, n_samples)
-    X_player['player_assists'] = np.random.uniform(2, 12, n_samples)
-    X_player['player_recent_points'] = X_player['player_points'] + np.random.normal(0, 2, n_samples)
-    X_player['player_points_trend'] = X_player['player_recent_points'] - X_player['player_points']
-    X_player['is_home_team'] = np.random.randint(0, 2, n_samples)
-    
-    # Target: predict assists
-    y_assists = X_player['player_assists'] + X_player['player_points'] * 0.1 + np.random.normal(0, 1, n_samples)
-    
-    # Split data
-    X_player_train, X_player_test = X_player[:train_idx], X_player[train_idx:]
-    y_assists_train, y_assists_test = y_assists[:train_idx], y_assists[train_idx:]
-    
-    # Train for assists prediction
-    assists_model = RandomForestModel(version=2)
-    assists_model.train_for_player_props(X_player_train, y_assists_train, prop_type='assists')
-    
-    # Test the assists prediction
-    assists_preds = assists_model.predict_player_stats(X_player_test)
-    mae = mean_absolute_error(y_assists_test, assists_preds)
-    print(f"Assists prediction MAE: {mae:.4f}")
-    
-    # Save the assists model
-    assists_model_path = assists_model.save()
-    print(f"Assists model saved to: {assists_model_path}")
+            logger.error(f"Error loading model: {str(e)}")
+            return False

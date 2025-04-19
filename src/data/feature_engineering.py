@@ -35,6 +35,49 @@ FEATURE_DIR = Path('data/features')
 FEATURE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+class NumpyEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder to handle NumPy types
+    """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+
+def serialize_dataframe(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prepare data for JSON serialization by converting numpy types to Python types
+    
+    Args:
+        data: Dictionary containing pandas/numpy data
+        
+    Returns:
+        Dictionary with serializable values
+    """
+    serializable_data = {}
+    
+    for key, value in data.items():
+        if isinstance(value, np.integer):
+            serializable_data[key] = int(value)
+        elif isinstance(value, np.floating):
+            serializable_data[key] = float(value)
+        elif isinstance(value, np.ndarray):
+            serializable_data[key] = value.tolist()
+        elif hasattr(value, 'to_dict'):
+            # Handle pandas objects
+            serializable_data[key] = value.to_dict()
+        else:
+            # Try standard serialization
+            serializable_data[key] = value
+            
+    return serializable_data
+
+
 class NBAFeatureEngineer:
     """Engineer features from NBA data for prediction models"""
     
@@ -359,7 +402,7 @@ class NBAFeatureEngineer:
         # Save all features to file
         features_file = self.game_features_dir / 'all_game_features.json'
         with features_file.open('w') as f:
-            json.dump(all_features, f, indent=2)
+            json.dump(all_features, f, indent=2, cls=NumpyEncoder)
         
         return all_features
     

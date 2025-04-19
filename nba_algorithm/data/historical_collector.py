@@ -35,6 +35,9 @@ if project_root not in sys.path:
 from src.api.balldontlie_client import BallDontLieClient
 from src.api.theodds_client import TheOddsClient
 
+# Import our new adapter for compatibility
+from nba_algorithm.data.client_adapter import BallDontLieClientAdapter, TheOddsClientAdapter
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -52,11 +55,11 @@ class HistoricalDataCollector:
     
     def __init__(self):
         """Initialize the data collector"""
-        self.balldontlie_client = BallDontLieClient()
+        self.balldontlie_client = BallDontLieClientAdapter()
         
         # Initialize The Odds API client if API key is available
         try:
-            self.odds_client = TheOddsClient()
+            self.odds_client = TheOddsClientAdapter()
             self.odds_available = True
         except ValueError:
             logger.warning("The Odds API key not found, odds data will not be collected")
@@ -599,15 +602,17 @@ class HistoricalDataCollector:
 
 # Additional function for production prediction system
 
-def fetch_historical_games(days: int = 30) -> List[Dict]:
+def fetch_historical_games(days: int = 90, fetch_full_season: bool = True, season_year: int = None) -> List[Dict]:
     """
-    Fetch historical NBA games for a specified number of days without using any fallbacks
+    Fetch historical NBA games for a specified number of days or for the entire season without using any fallbacks
     
     This function provides robust error handling and will raise exceptions rather than
     returning placeholder or synthetic data when API requests fail.
     
     Args:
-        days: Number of past days to fetch games for
+        days: Number of past days to fetch games for (if not fetching full season)
+        fetch_full_season: If True, fetch all games from the current season regardless of days parameter
+        season_year: Specific NBA season year to fetch data for (e.g., 2024 for 2024-2025 season)
         
     Returns:
         List of historical game dictionaries
@@ -617,18 +622,64 @@ def fetch_historical_games(days: int = 30) -> List[Dict]:
         RuntimeError: If API request fails
     """
     try:
-        logger.info(f"Fetching historical NBA games for past {days} days")
+        if fetch_full_season:
+            logger.info("Fetching historical NBA games for the entire current season")
+        else:
+            logger.info(f"Fetching historical NBA games for past {days} days")
         
         # Initialize API client with error checking
         try:
-            client = BallDontLieClient()
+            client = BallDontLieClientAdapter()
         except Exception as e:
             logger.error(f"Failed to initialize BallDontLie API client: {str(e)}")
             raise ValueError("Missing or invalid API key for BallDontLie API")
         
-        # Calculate date range
+        # Determine date range based on mode
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
+        
+        # Auto-detect or use the specified season year
+        if season_year is None:
+            # Get current season start date (approximately October 1st of the previous year if we're after January)
+            current_year = end_date.year
+            if end_date.month >= 1 and end_date.month <= 9:
+                season_start_year = current_year - 1
+            else:
+                season_start_year = current_year
+            
+            # In production, we need to check if data is available for this season
+            season_year = season_start_year + 1
+        else:
+            # Use provided season year
+            season_start_year = season_year - 1
+        
+        logger.info(f"Using data from NBA season: {season_start_year}-{season_year} (Season ID: {season_year})")
+        
+        # Verify data availability for this season
+        try:
+            games_for_season = client.request(
+                "games", 
+                params={"seasons[]": season_year, "per_page": 1}
+            )
+            if not games_for_season.get('data'):
+                # If no data found, try previous season
+                logger.warning(f"No data found for season {season_year}, trying previous season")
+                season_year -= 1
+                season_start_year -= 1
+                logger.info(f"Falling back to season: {season_start_year}-{season_year} (Season ID: {season_year})")
+        except Exception as e:
+            logger.warning(f"Error testing season data availability: {str(e)}")
+            # Continue with original season - the full data collection will handle errors
+        
+        if fetch_full_season:
+            start_date = datetime(season_start_year, 10, 1)  # NBA season typically starts in October
+            logger.info(f"Fetching games for entire {season_start_year}-{season_year} NBA season")
+            
+            # For historical seasons, set an appropriate end date (around June of the season_year)
+            if season_year < end_date.year:
+                end_date = datetime(season_year, 6, 30)  # End of June for the season finals
+        else:
+            # Just use the specified number of days
+            start_date = end_date - timedelta(days=days)
         
         # Format dates for API
         start_date_str = start_date.strftime("%Y-%m-%d")
@@ -642,7 +693,7 @@ def fetch_historical_games(days: int = 30) -> List[Dict]:
         per_page = 100
         total_pages = 1
         
-        while page <= total_pages and page <= 5:  # Limit to 5 pages to avoid rate limits
+        while page <= total_pages and page <= 10:  # Increased from 5 to 10 pages for more historical data
             try:
                 logger.debug(f"Fetching page {page} of historical games")
                 

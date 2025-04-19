@@ -123,7 +123,7 @@ def fetch_betting_odds(games: List[Dict], force_refresh: bool = False) -> Dict[s
     return odds
 
 
-def fetch_historical_games(days: int = 30, force_refresh: bool = False) -> pd.DataFrame:
+def fetch_historical_games(days: int = 90, force_refresh: bool = False) -> pd.DataFrame:
     """
     Fetch historical games for model training
     

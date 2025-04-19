@@ -28,43 +28,93 @@ def calculate_confidence_level(predictions_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with added confidence level
     """
-    if predictions_df.empty:
-        return predictions_df
+    try:
+        if predictions_df is None or predictions_df.empty:
+            logger.warning("Empty predictions DataFrame provided to calculate_confidence_level")
+            return predictions_df
+            
+        logger.info("Calculating confidence levels for predictions")
         
-    logger.info("Calculating confidence levels for predictions")
+        # Create a copy to avoid modifying the original
+        df = predictions_df.copy()
+        
+        # Ensure we have a confidence column to store results
+        if 'confidence' not in df.columns:
+            df['confidence'] = 'medium'  # Default confidence level
+        
+        # Apply confidence adjustments for each prediction type
+        try:
+            if 'prediction_type' in df.columns:
+                for pred_type, group in df.groupby('prediction_type'):
+                    try:
+                        if pred_type == 'moneyline':
+                            df.loc[group.index, 'confidence'] = _calculate_moneyline_confidence(group)
+                        elif pred_type == 'spread':
+                            df.loc[group.index, 'confidence'] = _calculate_spread_confidence(group)
+                        elif pred_type == 'total':
+                            df.loc[group.index, 'confidence'] = _calculate_total_confidence(group)
+                        elif pred_type.startswith('player_'):
+                            df.loc[group.index, 'confidence'] = _calculate_player_prop_confidence(group)
+                    except Exception as e:
+                        logger.warning(f"Error calculating confidence for {pred_type} predictions: {str(e)}")
+                        # Don't overwrite existing values if calculation fails
+            else:
+                # If prediction_type not available, apply generic confidence calculation
+                try:
+                    df['confidence'] = _calculate_generic_confidence(df)
+                except Exception as e:
+                    logger.warning(f"Error calculating generic confidence: {str(e)}")
+                    df['confidence'] = 'medium'  # Default when calculation fails
+        except Exception as e:
+            logger.warning(f"Error in confidence calculation grouping: {str(e)}")
+            df['confidence'] = 'medium'  # Default when grouping fails
+        
+        # Convert confidence to a categorical level if numeric
+        if 'confidence_score' in df.columns:
+            try:
+                # Ensure confidence_score is numeric
+                df['confidence_score'] = pd.to_numeric(df['confidence_score'], errors='coerce').fillna(0.5)
+                
+                # Map confidence scores to levels
+                df['confidence_level'] = pd.cut(
+                    df['confidence_score'], 
+                    bins=[0, 0.4, 0.7, 1.0],
+                    labels=['low', 'medium', 'high'],
+                    include_lowest=True
+                ).astype(str)
+            except Exception as e:
+                logger.warning(f"Error mapping confidence scores to levels: {str(e)}")
+                df['confidence_level'] = 'medium'  # Default when mapping fails
+        
+        # NEW: Apply injury adjustments to confidence
+        try:
+            df = _adjust_confidence_for_injuries(df)
+        except Exception as e:
+            logger.warning(f"Error adjusting confidence for injuries: {str(e)}")
+        
+        # NEW: Apply advanced metrics adjustments to confidence
+        try:
+            df = _adjust_confidence_for_advanced_metrics(df)
+        except Exception as e:
+            logger.warning(f"Error adjusting confidence for advanced metrics: {str(e)}")
+        
+        # Ensure confidence is within valid range
+        if 'confidence_score' in df.columns:
+            df['confidence_score'] = df['confidence_score'].clip(0.3, 0.95)
+        
+        logger.info("Confidence levels calculated successfully")
+        return df
     
-    # Apply confidence adjustments for each prediction type
-    if 'prediction_type' in predictions_df.columns:
-        for pred_type, group in predictions_df.groupby('prediction_type'):
-            if pred_type == 'moneyline':
-                predictions_df.loc[group.index, 'confidence'] = _calculate_moneyline_confidence(group)
-            elif pred_type == 'spread':
-                predictions_df.loc[group.index, 'confidence'] = _calculate_spread_confidence(group)
-            elif pred_type == 'total':
-                predictions_df.loc[group.index, 'confidence'] = _calculate_total_confidence(group)
-            elif pred_type.startswith('player_'):
-                predictions_df.loc[group.index, 'confidence'] = _calculate_player_prop_confidence(group)
-    else:
-        # If prediction_type not available, apply generic confidence calculation
-        predictions_df['confidence'] = _calculate_generic_confidence(predictions_df)
-    
-    # NEW: Apply injury adjustments to confidence
-    try:
-        predictions_df = _adjust_confidence_for_injuries(predictions_df)
     except Exception as e:
-        logger.warning(f"Error adjusting confidence for injuries: {str(e)}")
-    
-    # NEW: Apply advanced metrics adjustments to confidence
-    try:
-        predictions_df = _adjust_confidence_for_advanced_metrics(predictions_df)
-    except Exception as e:
-        logger.warning(f"Error adjusting confidence for advanced metrics: {str(e)}")
-    
-    # Ensure confidence is within valid range
-    predictions_df['confidence'] = predictions_df['confidence'].clip(0.3, 0.95)
-    
-    logger.info("Confidence levels calculated successfully")
-    return predictions_df
+        logger.error(f"Unhandled exception in calculate_confidence_level: {str(e)}")
+        # Return the original DataFrame to avoid breaking the pipeline
+        if predictions_df is not None:
+            if 'confidence' not in predictions_df.columns:
+                predictions_df['confidence'] = 'low'
+            return predictions_df
+        else:
+            # Return an empty DataFrame with a confidence column
+            return pd.DataFrame(columns=['game_id', 'confidence'])
 
 
 def calculate_player_confidence(player_predictions_df):

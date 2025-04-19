@@ -43,12 +43,33 @@ def fetch_betting_odds(games: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
     
     logger.info(f"Fetching betting odds for {len(games)} games")
     
-    # Get API key from environment
-    api_key = os.environ.get("ODDS_API_KEY")
+    # Get API key using our standardized get_api_key function
+    try:
+        # Try to import from the proper location
+        try:
+            from ...config.api_keys import get_api_key
+        except ImportError:
+            # Try the alternative import path
+            try:
+                from config.api_keys import get_api_key
+            except ImportError:
+                logger.error("Failed to import get_api_key function from config.api_keys")
+                return {}
+        
+        api_key = get_api_key('theodds')
+        
+        if not api_key:
+            logger.warning("No Odds API key available from get_api_key function. Checking environment.")
+            # Fall back to direct environment variable checks
+            api_key = os.environ.get("THE_ODDS_API_KEY") or os.environ.get("ODDS_API_KEY")
+    except Exception as e:
+        logger.error(f"Error retrieving API key: {str(e)}")
+        # Fall back to direct environment check
+        api_key = os.environ.get("THE_ODDS_API_KEY") or os.environ.get("ODDS_API_KEY")
     
     if not api_key:
-        logger.error("No Odds API key found in environment variables. Cannot fetch odds data.")
-        raise ValueError("ODDS_API_KEY environment variable is required to fetch odds data")
+        logger.error("No Odds API key found. Cannot fetch odds data.")
+        return {}
     
     # API endpoint for NBA odds
     odds_endpoint = f"{ODDS_API_URL}/sports/basketball_nba/odds"
@@ -111,8 +132,10 @@ def fetch_betting_odds(games: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
             
             # Match odds data with our games
             for game in games:
-                home_team = game.get('home_team', {}).get('name', '').strip()
-                away_team = game.get('away_team', {}).get('name', '').strip()
+                # BallDontLie API uses 'full_name', not 'name'
+                home_team = game.get('home_team', {}).get('full_name', '').strip()
+                # For away teams, BallDontLie uses 'visitor_team' naming convention
+                away_team = game.get('visitor_team', {}).get('full_name', '').strip()
                 game_id = game.get('id')
                 
                 if not home_team or not away_team or not game_id:
@@ -256,8 +279,10 @@ def process_odds_data(odds_data: List[Dict[str, Any]], games: List[Dict[str, Any
     odds_by_game = {}
     
     for game in games:
-        home_team = game.get('home_team', {}).get('name', '').strip()
-        away_team = game.get('away_team', {}).get('name', '').strip()
+        # BallDontLie API uses 'full_name', not 'name'
+        home_team = game.get('home_team', {}).get('full_name', '').strip()
+        # For away teams, BallDontLie uses 'visitor_team' naming convention
+        away_team = game.get('visitor_team', {}).get('full_name', '').strip()
         game_id = game.get('id')
         
         if not home_team or not away_team or not game_id:

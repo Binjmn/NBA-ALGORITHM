@@ -35,6 +35,7 @@ def get_api_key(service: str) -> Optional[str]:
     env_key = os.environ.get(env_var_name)
     
     if env_key:
+        logger.info(f"Using {service} API key from environment variable {env_var_name}")
         return env_key
     
     # Fall back to constants in this file
@@ -49,6 +50,7 @@ def get_api_key(service: str) -> Optional[str]:
         logger.warning(f"No API key found for service: {service}")
         return None
     
+    logger.info(f"Using {service} API key from configuration file (not environment variable)")
     return api_key
 
 

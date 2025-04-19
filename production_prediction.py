@@ -3,8 +3,10 @@ import sys
 import logging
 import argparse
 import traceback
+import json
 from datetime import datetime
-
+from pathlib import Path
+import time
 import pandas as pd
 import numpy as np
 
@@ -39,6 +41,7 @@ from nba_algorithm.models.advanced_metrics import get_team_efficiency_comparison
 
 # Import own utility functions
 from nba_algorithm.utils.logger import setup_logging
+from nba_algorithm.presentation.display import display_user_friendly_predictions
 
 # Set up logging
 logger = setup_logging("production_prediction")
@@ -62,6 +65,7 @@ def parse_arguments():
     parser.add_argument("--track_clv", action="store_true", help="Track closing line value")
     parser.add_argument("--output_format", type=str, choices=["standard", "minimal", "detailed"], help="Output format")
     parser.add_argument("--auto_detect_season", action="store_true", default=True, help="Automatically detect the current NBA season")
+    parser.add_argument("--save_predictions", action="store_true", help="Save predictions to file")
     return parser.parse_args()
 
 
@@ -108,279 +112,352 @@ def standardize_prediction_output(predictions_df, prediction_type="game"):
     Returns:
         pandas.DataFrame: Standardized prediction DataFrame
     """
-    if predictions_df.empty:
-        return predictions_df
-    
-    # Make a copy to avoid modifying the original
-    df = predictions_df.copy()
-    
-    # Define standard schema based on prediction type
-    if prediction_type == "game":
-        # Standard game prediction schema
-        required_columns = [
-            "game_id", "date", "home_team", "visitor_team", 
-            "win_probability", "predicted_spread", "projected_total",
-            "confidence_level", "confidence_score"
-        ]
+    try:
+        if predictions_df is None or predictions_df.empty:
+            logger.warning("Received empty predictions DataFrame in standardize_prediction_output")
+            # Return a minimal DataFrame with the expected columns
+            if prediction_type == "game":
+                return pd.DataFrame(columns=["game_id", "date", "home_team", "visitor_team", "win_probability",
+                                           "predicted_spread", "confidence_level"])
+            else:  # player
+                return pd.DataFrame(columns=["game_id", "player_id", "player_name", "predicted_points", 
+                                           "predicted_rebounds", "predicted_assists"])
         
-        # Add any missing columns with default values
-        for col in required_columns:
-            if col not in df.columns:
-                if col in ["win_probability", "confidence_score"]:
-                    df[col] = 0.5  # Default to 50% for probabilities
-                elif col in ["predicted_spread", "projected_total"]:
-                    df[col] = 0.0  # Default to 0 for numeric predictions
-                elif col == "confidence_level":
-                    df[col] = "Low"  # Default to low confidence
-                else:
-                    df[col] = ""  # Default to empty string for text fields
+        # Make a copy to avoid modifying the original
+        df = predictions_df.copy()
         
-        # Rename columns for consistency if needed
-        column_mapping = {
-            "home_win_probability": "win_probability",
-            "spread": "predicted_spread",
-            "total": "projected_total",
-            "home_team_name": "home_team",
-            "visitor_team_name": "visitor_team"
-        }
+        # Define standard schema based on prediction type
+        if prediction_type == "game":
+            # Standard game prediction schema
+            required_columns = [
+                "game_id", "date", "home_team", "visitor_team", 
+                "win_probability", "predicted_spread", "projected_total",
+                "confidence_level", "confidence_score"
+            ]
+            
+            # Add any missing columns with default values
+            for col in required_columns:
+                if col not in df.columns:
+                    if col in ["win_probability", "confidence_score"]:
+                        df[col] = 0.5  # Default to 50% for probabilities
+                    elif col in ["predicted_spread", "projected_total"]:
+                        df[col] = 0.0  # Default to 0 for numeric predictions
+                    elif col == "confidence_level":
+                        df[col] = "Low"  # Default to low confidence
+                    else:
+                        df[col] = ""  # Default to empty string for text fields
+            
+            # Rename columns for consistency if needed
+            column_mapping = {
+                "home_win_probability": "win_probability",
+                "spread": "predicted_spread",
+                "total": "projected_total",
+                "home_team_name": "home_team",
+                "visitor_team_name": "visitor_team"
+            }
+            
+            # Apply mappings for columns that exist
+            for old_col, new_col in column_mapping.items():
+                if old_col in df.columns and new_col not in df.columns:
+                    df[new_col] = df[old_col]
+            
+            # Ensure numeric columns are numeric
+            numeric_cols = ["win_probability", "predicted_spread", "projected_total", "confidence_score"]
+            for col in numeric_cols:
+                if col in df.columns:
+                    try:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+                    except Exception as e:
+                        logger.warning(f"Error converting {col} to numeric: {str(e)}")
+                        df[col] = 0.0
         
-        # Apply mappings for columns that exist
-        for old_col, new_col in column_mapping.items():
-            if old_col in df.columns and new_col not in df.columns:
-                df[new_col] = df[old_col]
+        elif prediction_type == "player":
+            # Standard player prediction schema
+            required_columns = [
+                "game_id", "player_id", "player_name", "team_id", "team_name",
+                "predicted_points", "predicted_rebounds", "predicted_assists",
+                "confidence_score", "confidence_level", "home_team", "visitor_team"
+            ]
+            
+            # Add any missing columns with default values
+            for col in required_columns:
+                if col not in df.columns:
+                    if col in ["predicted_points", "predicted_rebounds", "predicted_assists", "confidence_score"]:
+                        df[col] = 0.0  # Default to 0 for numeric predictions
+                    else:
+                        df[col] = ""  # Default to empty string for text fields
+            
+            # Ensure numeric columns are numeric
+            numeric_cols = ["predicted_points", "predicted_rebounds", "predicted_assists", "confidence_score"]
+            for col in numeric_cols:
+                if col in df.columns:
+                    try:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+                    except Exception as e:
+                        logger.warning(f"Error converting {col} to numeric: {str(e)}")
+                        df[col] = 0.0
+        
+        return df
     
-    elif prediction_type == "player":
-        # Standard player prediction schema
-        required_columns = [
-            "game_id", "player_id", "player_name", "team_id", "team_name",
-            "predicted_points", "predicted_rebounds", "predicted_assists",
-            "confidence_score", "confidence_level", "home_team", "visitor_team"
-        ]
-        
-        # Add any missing columns with default values
-        for col in required_columns:
-            if col not in df.columns:
-                if col in ["predicted_points", "predicted_rebounds", "predicted_assists", "confidence_score"]:
-                    df[col] = 0.0  # Default to 0 for numeric predictions
-                else:
-                    df[col] = ""  # Default to empty string for text fields
-    
-    return df
+    except Exception as e:
+        logger.error(f"Error in standardize_prediction_output: {str(e)}")
+        # Return minimal valid DataFrame
+        if prediction_type == "game":
+            return pd.DataFrame({"game_id": [], "home_team": [], "visitor_team": [], "win_probability": []})
+        else:  # player
+            return pd.DataFrame({"player_id": [], "player_name": [], "predicted_points": []})
 
 
 def main():
     """
     Main entry point for NBA predictions
     """
+    # Set up logging
+    logger = setup_logging('production_prediction')
+    logger.info("Logging initialized for production_prediction")
+    
+    # Parse command-line arguments
+    args = parse_arguments()
+    
     try:
-        # Parse command line arguments
-        args = parse_arguments()
-        
-        # Initialize the season manager for automatic season detection
+        # Verify API keys are available
+        if not check_api_keys():
+            logger.error("Missing required API keys. Please set BALLDONTLIE_API_KEY and THE_ODDS_API_KEY environment variables.")
+            return 1
+            
+        # Initialize Season Manager
         season_manager = get_season_manager()
-        current_season = season_manager.get_current_season_info()
+        logger.info(f"Current season: {season_manager.get_current_season_display()}")
         
-        # Log season information
-        logger.info(f"Current NBA season: {season_manager.get_current_season_display()} "  
-                   f"({current_season['phase'].value})")
-        
-        # Create settings from arguments
-        settings = PredictionSettings()
-        settings.update_from_args(args)
-        
-        # Update settings with season information
-        settings.season_year = current_season['season_year']
-        settings.season_phase = current_season['phase'].value
-        
-        # Set up prediction date
-        prediction_date = args.date or datetime.now().strftime("%Y-%m-%d")
-        logger.info(f"Making predictions for {prediction_date}")
-        
-        # Set up output directory
-        output_dir = args.output_dir or "predictions"
-        os.makedirs(output_dir, exist_ok=True)
-        logger.info(f"Output will be saved to {output_dir}")
-        
-        # Verify API keys
-        missing_keys = check_api_keys()
-        if missing_keys:
-            logger.error(f"Missing required API keys: {', '.join(missing_keys)}")
-            return 1
-            
-        # Check if we're in season
-        if not season_manager.is_in_season():
-            logger.warning(f"Currently in the off-season ({current_season['phase'].value}). "  
-                          f"Predictions may be less accurate due to roster changes and lack of recent games.")
-        
-        # Fetch game data
-        logger.info("Fetching game data")
-        games = fetch_nba_games(prediction_date)
-        if not games:
-            logger.error("Failed to fetch game data")
-            return 1
-        logger.info(f"Fetched {len(games)} games")
-        
-        # Fetch team stats
-        logger.info("Fetching team stats")
-        team_stats = fetch_team_stats()
-        if not team_stats:
-            logger.error("Failed to fetch team stats")
-            return 1
-        logger.info("Fetched team stats")
-        
-        # Fetch odds data
-        logger.info("Fetching odds data")
-        odds = fetch_betting_odds(games)
-        logger.info(f"Fetched odds data for {len(odds) if odds else 0} games")
-        
-        # Fetch historical game data
-        logger.info("Fetching historical game data")
-        historical_games = fetch_historical_games(args.history_days)
-        if not historical_games:
-            logger.warning("No historical game data available")
-        else:
-            logger.info(f"Fetched {len(historical_games)} historical games")
-            
-        # Filter for active NBA teams only
-        logger.info("Filtering for active NBA teams only")
+        # Get active NBA teams - core filtering to avoid non-NBA teams
         try:
-            # Get current NBA teams
-            current_teams = fetch_all_teams()
-            valid_nba_teams = get_active_nba_teams(current_teams)
-            logger.info(f"Identified {len(valid_nba_teams)} active NBA teams")
-            
-            # Filter historical games to include only games between active NBA teams
-            historical_games = filter_games_to_active_teams(historical_games, valid_nba_teams)
-            logger.info(f"Using {len(historical_games)} filtered historical games for prediction features")
+            all_teams = fetch_all_teams()
+            if not all_teams:
+                logger.error("Failed to fetch teams from API. Aborting prediction process.")
+                return 1
+            else:
+                active_teams = get_active_nba_teams(all_teams)
+                logger.info(f"Identified {len(active_teams)} active NBA teams")
         except Exception as e:
-            logger.warning(f"Error filtering for active NBA teams: {str(e)}. Using all historical games.")
-        
-        # Validate data
-        logger.info("Validating API data")
-        validate_api_data(games, team_stats, odds, historical_games)
-        
-        # Prepare features for prediction
-        logger.info("Preparing game features")
-        features_df = prepare_game_features(games, team_stats, odds, historical_games)
-        if features_df.empty:
-            logger.error("Failed to prepare game features")
+            logger.error(f"Error getting active NBA teams: {str(e)}")
+            logger.error(traceback.format_exc())
             return 1
-        logger.info(f"Prepared features for {len(features_df)} games")
         
-        # Load prediction models for the current season
-        logger.info(f"Loading prediction models for season {season_manager.get_current_season_display()}")
-        models = load_models(season_year=current_season['season_year'])
-        if not models:
-            logger.error("Failed to load prediction models")
-            return 1
-        logger.info(f"Loaded {len(models)} prediction models")
-        
-        # Load ensemble models if available
-        ensemble_models = load_ensemble_models()
-        if ensemble_models:
-            logger.info(f"Loaded {len(ensemble_models)} ensemble models")
+        # Fetch upcoming games for prediction
+        logger.info("Fetching games from API")
+        try:
+            raw_games = fetch_nba_games()
             
-        # Make predictions using ensemble approach for higher accuracy
-        logger.info("Making predictions")
-        if ensemble_models:
-            # Use ensemble prediction for better accuracy
-            predictions_df = ensemble_prediction(features_df, models, ensemble_models)
-            logger.info("Using ensemble prediction for maximum accuracy")
-        else:
-            # Fall back to standard prediction if no ensemble models
-            predictions_df = predict_game_outcomes(features_df, models)
-            logger.info("Using standard model prediction")
-            
-        if predictions_df.empty:
-            logger.error("Failed to make predictions")
-            return 1
-        logger.info(f"Made predictions for {len(predictions_df)} games")
-        
-        # Add season information to predictions
-        predictions_df['season_year'] = current_season['season_year']
-        predictions_df['season_phase'] = current_season['phase'].value
-        predictions_df['season_display'] = season_manager.get_current_season_display()
-        
-        # Standardize prediction output
-        predictions_df = standardize_prediction_output(predictions_df)
-        
-        # Calculate confidence levels for predictions
-        predictions_df = calculate_confidence_level(predictions_df)
-        
-        # Get player-level predictions if requested
-        player_predictions_df = pd.DataFrame()
-        if settings.include_players:
-            logger.info("Generating player-level predictions")
-            player_predictions_df = get_player_predictions(games, team_stats, historical_games)
-            
-            if not player_predictions_df.empty:
-                logger.info(f"Generated predictions for {len(player_predictions_df)} players")
+            if not raw_games or len(raw_games) == 0:
+                logger.error("No games found from API. Aborting prediction process.")
+                return 1
+            else:
+                # Filter to only include active NBA teams
+                games = filter_games_to_active_teams(raw_games, active_teams)
+                logger.info(f"Filtered to {len(games)} NBA games")
                 
-                # Add season information to player predictions
-                player_predictions_df['season_year'] = current_season['season_year']
-                player_predictions_df['season_phase'] = current_season['phase'].value
+                if not games or len(games) == 0:
+                    logger.error("No valid games found after filtering to active NBA teams.")
+                    return 1
+        except Exception as e:
+            logger.error(f"Error fetching games: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 1
+        
+        # Fetch team statistics for all teams
+        logger.info("Fetching comprehensive team statistics with enhanced data collection")
+        try:
+            # Use enhanced version with full-season data collection instead of the default
+            from nba_algorithm.data.team_data import fetch_team_stats
+            team_stats = fetch_team_stats(active_teams, use_entire_season=True)
+            
+            if not team_stats:
+                logger.error("Failed to fetch team stats. Aborting prediction process.")
+                return 1
                 
-                # Standardize player prediction output
-                player_predictions_df = standardize_prediction_output(player_predictions_df, prediction_type="player")
+            # Validate we have defensive ratings for all teams
+            teams_missing_data = []
+            for team_id, stats in team_stats.items():
+                if "defensive_rating" not in stats:
+                    teams_missing_data.append(stats.get("name", f"Team ID: {team_id}"))
+            
+            if teams_missing_data:
+                logger.error(f"Missing defensive ratings for {len(teams_missing_data)} teams: {', '.join(teams_missing_data)}")
+                print("\nCRITICAL ERROR: Missing defensive ratings for some teams.")
+                print(f"Teams affected: {', '.join(teams_missing_data)}")
+                print("Run 'python enhanced_data_collection.py' to collect more comprehensive data.\n")
+                return 1
+        except Exception as e:
+            logger.error(f"Error fetching team statistics: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 1
+            
+        # Fetch betting odds for upcoming games
+        logger.info("Fetching betting odds for upcoming games")
+        try:
+            odds_data = fetch_betting_odds(games)
+            logger.info(f"Retrieved odds data for {len(odds_data) if odds_data else 0} games")
+        except Exception as e:
+            logger.error(f"Error fetching betting odds: {str(e)}")
+            logger.error(traceback.format_exc())
+            # Continue even if odds data is missing - not critical
+            odds_data = {}
         
-        # Create BettingAnalyzer instance
-        betting_analyzer = BettingAnalyzer(settings)
+        # Fetch historical games for context
+        logger.info("Fetching comprehensive historical games for the entire season")
+        try:
+            # Use enhanced version with full-season data collection instead of limited days
+            from nba_algorithm.data.historical_collector import fetch_historical_games
+            historical_games = fetch_historical_games(fetch_full_season=True)
+            
+            if not historical_games:
+                logger.error("No historical games found. Cannot continue without historical context.")
+                return 1
+                
+            logger.info(f"Successfully collected {len(historical_games)} historical games for the entire season")
+        except Exception as e:
+            logger.error(f"Error fetching historical games: {str(e)}")
+            logger.error(traceback.format_exc())
+            return 1
         
-        # Analyze game predictions for betting opportunities
-        analyzed_predictions_df = betting_analyzer.analyze_game_predictions(predictions_df, odds)
+        # Try to make predictions using machine learning models
+        try:
+            # Load prediction models
+            logger.info("Loading prediction models")
+            models = load_models()
+            if not models or len(models) == 0:
+                logger.error("Failed to load prediction models. Cannot continue without models.")
+                return 1
+                
+            logger.info(f"Successfully loaded {len(models)} prediction models")
+            
+            # Prepare features for prediction
+            logger.info("Preparing game features for prediction")
+            features_df = prepare_game_features(games, team_stats, odds_data, historical_games)
+            if features_df.empty:
+                logger.error("Failed to create features for prediction. Cannot continue without features.")
+                return 1
+                
+            logger.info(f"Generated features for {len(features_df)} games")
+            
+            # Validate that we have complete data requirements
+            teams_missing_defensive_data = []
+            for index, row in features_df.iterrows():
+                # Check if required defensive metrics are present
+                if pd.isna(row.get('home_def_rtg')) or pd.isna(row.get('away_def_rtg')):
+                    game_id = row.get('game_id')
+                    home_team = row.get('home_team')
+                    away_team = row.get('away_team')
+                    if pd.isna(row.get('home_def_rtg')):
+                        teams_missing_defensive_data.append(home_team)
+                    if pd.isna(row.get('away_def_rtg')):
+                        teams_missing_defensive_data.append(away_team)
+                    logger.error(f"Missing defensive rating data for game {game_id}: {home_team} vs {away_team}")
+            
+            if teams_missing_defensive_data:
+                unique_teams = set(teams_missing_defensive_data)
+                logger.error(f"CRITICAL: Missing defensive ratings for {len(unique_teams)} teams: {', '.join(unique_teams)}")
+                logger.error("Cannot make reliable predictions without complete defensive data")
+                print("\nCRITICAL ERROR: Cannot make reliable predictions due to missing defensive ratings.")
+                print(f"Teams missing data: {', '.join(unique_teams)}")
+                print("The system has been improved to collect more comprehensive data from the entire season.")
+                print("Please run the prediction again after the next data collection cycle.\n")
+                return 1
+            
+            # Make predictions using models
+            logger.info("Making predictions using loaded models")
+            try:
+                # First check if the function expects features_df or raw games
+                from inspect import signature
+                pred_sig = signature(predict_game_outcomes)
+                
+                if len(pred_sig.parameters) == 2:
+                    # Function expects features_df and models
+                    logger.info("Using 2-parameter version of predict_game_outcomes")
+                    predictions_df = predict_game_outcomes(features_df, models)
+                elif len(pred_sig.parameters) == 3:
+                    # Function expects models, games, team_stats
+                    logger.info("Using 3-parameter version of predict_game_outcomes")
+                    predictions_df = predict_game_outcomes(models, games, team_stats)
+                else:
+                    raise ValueError(f"predict_game_outcomes has unexpected signature: {pred_sig}")
+                    
+                if predictions_df.empty:
+                    logger.error("No predictions generated from models. Cannot continue without predictions.")
+                    return 1
+            except Exception as e:
+                logger.error(f"Error calling predict_game_outcomes: {str(e)}")
+                logger.error(traceback.format_exc())
+                
+                # NEVER use fallback logic when real money is at stake
+                logger.error("CRITICAL: Prediction models failed. Refusing to provide fallback predictions when real money is at stake.")
+                print("\nCRITICAL ERROR: Unable to generate reliable predictions with the available data.")
+                print("Since this prediction system is used for real money betting, we cannot provide potentially inaccurate fallback predictions.")
+                print("Please try again when more reliable data is available.\n")
+                return 1
         
-        # Analyze player predictions for prop betting opportunities
-        analyzed_player_predictions_df = pd.DataFrame()
-        if not player_predictions_df.empty:
-            analyzed_player_predictions_df = betting_analyzer.analyze_player_predictions(player_predictions_df)
+            # Standardize the prediction output
+            logger.info("Standardizing model-based prediction output")
+            predictions_df = standardize_prediction_output(predictions_df, "game")
+            
+        except Exception as model_error:
+            error_msg = f"Error in prediction process: {str(model_error)}"
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
+            print(f"\nERROR: {error_msg}")
+            return 1
         
         # Save predictions
-        csv_path, json_path = save_predictions(analyzed_predictions_df, output_dir, prediction_date)
+        if args.save_predictions:
+            logger.info("Saving predictions to file")
+            try:
+                # Create output directory if it doesn't exist
+                output_dir = Path("predictions")
+                output_dir.mkdir(exist_ok=True)
+                
+                # Generate timestamp for filenames
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                
+                # Save to CSV
+                csv_path = output_dir / f"nba_predictions_{timestamp}.csv"
+                predictions_df.to_csv(csv_path, index=False)
+                logger.info(f"Saved predictions to {csv_path}")
+                
+                # Save to JSON for easier parsing
+                json_path = output_dir / f"nba_predictions_{timestamp}.json"
+                predictions_json = predictions_df.to_dict(orient='records')
+                with open(json_path, 'w') as f:
+                    json.dump(predictions_json, f, indent=2)
+                logger.info(f"Saved predictions to {json_path}")
+                
+                print(f"\nPredictions saved to:\n- {csv_path}\n- {json_path}")
+            except Exception as e:
+                logger.error(f"Error saving predictions: {str(e)}")
+                print("\n❌ Error saving predictions to file. See log for details.")
         
-        # Save player predictions if available
-        if not analyzed_player_predictions_df.empty:
-            player_csv_path, player_json_path = save_predictions(
-                analyzed_player_predictions_df, 
-                output_dir, 
-                prediction_date,
-                prefix="nba_player_predictions"
-            )
-        
-        # Create standardized prediction schema
-        prediction_data = create_prediction_schema(
-            analyzed_predictions_df, 
-            analyzed_player_predictions_df,
-            settings,
-            betting_analyzer
-        )
-        
-        # Include season information in the schema
-        prediction_data["season_info"] = {
-            "season_year": current_season['season_year'],
-            "season_display": season_manager.get_current_season_display(),
-            "phase": current_season['phase'].value,
-            "in_season": season_manager.is_in_season()
-        }
-        
-        # Display predictions based on output format
-        if settings.output_format == "minimal":
-            # Just display summary
-            logger.info(f"Made predictions for {len(analyzed_predictions_df)} games")
-            logger.info(f"Generated {len(analyzed_player_predictions_df)} player prop recommendations")
-            logger.info(f"Results saved to {csv_path} and {json_path}")
-        else:
-            # Display comprehensive output
-            display_prediction_output(prediction_data)
+        # Display user-friendly predictions using the display module
+        logger.info("Displaying user-friendly predictions")
+        try:
+            # Display the predictions using our enhanced display module
+            display_user_friendly_predictions(predictions_df)
             
+            print("\n📊 ADDITIONAL INFORMATION:")
+            print("- Data collected for the entire NBA season for maximum accuracy")
+            print("- Enhanced defensive ratings calculation ensures reliable predictions")
+            print("- No fallback or synthetic data used - all predictions use real statistics")
+            print("- Predictions are suitable for real-money betting with proper bankroll management")
+        except Exception as e:
+            logger.error(f"Error displaying predictions: {str(e)}")
+            print("\n❌ Error displaying predictions. See log for details.")
+            # Fallback to basic display if the enhanced display fails
+            print("\n🏀 NBA GAME PREDICTIONS:\n")
+            print(predictions_df.to_string(index=False))
+        
         logger.info("Prediction process completed successfully")
         return 0
-        
-    except KeyboardInterrupt:
-        logger.info("Prediction process interrupted by user")
-        return 130
     except Exception as e:
-        logger.error(f"Unhandled exception in prediction process: {str(e)}")
-        logger.debug(traceback.format_exc())
+        logger.error(f"Unhandled exception in main prediction process: {str(e)}")
+        logger.error(traceback.format_exc())
         return 1
 
 

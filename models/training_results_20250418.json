@@ -1,0 +1,10 @@
+{
+    "random_forest_win_predictor": {
+        "success": false,
+        "error": "With n_samples=0, test_size=0.2 and train_size=None, the resulting train set will be empty. Adjust any of the aforementioned parameters."
+    },
+    "gradient_boosting_win_predictor": {
+        "success": false,
+        "error": "With n_samples=0, test_size=0.2 and train_size=None, the resulting train set will be empty. Adjust any of the aforementioned parameters."
+    }
+}

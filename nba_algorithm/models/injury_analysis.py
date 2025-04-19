@@ -91,7 +91,7 @@ def fetch_team_injuries(team_id: Optional[int] = None) -> List[Dict[str, Any]]:
         return []
 
 
-def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = None) -> float:
+def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = None) -> Optional[float]:
     """
     Calculate player importance score based on stats and playing time
     
@@ -100,7 +100,7 @@ def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = N
         player_stats: Optional player stats dictionary (to avoid refetching)
         
     Returns:
-        Player importance score between 0 and 1
+        Player importance score between 0 and 1, or None if insufficient data
     """
     try:
         # If stats not provided, fetch them
@@ -108,8 +108,8 @@ def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = N
             player_stats = get_player_stats(player_id)
             
         if not player_stats:
-            logger.warning(f"No stats available for player {player_id}, using default importance")
-            return DEFAULT_PLAYER_IMPORTANCE
+            logger.warning(f"No stats available for player {player_id}, unable to calculate importance")
+            return None  # Return None instead of using default values
             
         # Calculate importance based on multiple factors:
         # 1. Minutes played (more minutes = more important)
@@ -121,6 +121,11 @@ def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = N
         points = float(player_stats.get('pts', 0))
         plus_minus = float(player_stats.get('plus_minus', 0))
         usage = float(player_stats.get('usage_percentage', 0))
+        
+        # Check if we have enough meaningful data
+        if minutes == 0 and points == 0:
+            logger.warning(f"Player {player_id} has no minutes or points data, unable to calculate importance")
+            return None  # Return None instead of using default values
         
         # Normalize minutes (typical starter plays 30+ minutes)
         minutes_factor = min(minutes / 36.0, 1.0)  # Cap at 1.0
@@ -147,7 +152,7 @@ def calculate_player_importance(player_id: int, player_stats: Optional[Dict] = N
         
     except Exception as e:
         logger.error(f"Error calculating player importance: {str(e)}")
-        return DEFAULT_PLAYER_IMPORTANCE
+        return None  # Return None instead of using default values
 
 
 def get_injury_impact_score(injuries: List[Dict[str, Any]], team_id: int) -> Dict[str, Any]:
@@ -204,6 +209,11 @@ def get_injury_impact_score(injuries: List[Dict[str, Any]], team_id: int) -> Dic
             
             # Calculate player importance
             importance = calculate_player_importance(player_id)
+            
+            # Check if importance is None
+            if importance is None:
+                logger.warning(f"Unable to calculate importance for player {player_id}, skipping")
+                continue
             
             # Calculate individual impact
             impact = importance * severity

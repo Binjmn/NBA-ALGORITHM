@@ -1,0 +1,3 @@
+game_id,date,home_team,visitor_team,home_win_probability,visitor_win_probability,predicted_winner,spread,prediction_method,confidence_score,confidence_level,win_probability,predicted_spread,projected_total
+18423164,2025-04-18,Atlanta Hawks,Miami Heat,0.62,0.38,Atlanta Hawks,-1.7999999999999998,robust_fallback,0.5800000000000001,medium,0.5,0.0,0.0
+18423251,2025-04-18,Memphis Grizzlies,Dallas Mavericks,0.62,0.38,Memphis Grizzlies,-1.7999999999999998,robust_fallback,0.5800000000000001,medium,0.5,0.0,0.0

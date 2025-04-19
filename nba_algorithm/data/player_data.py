@@ -241,18 +241,40 @@ def get_season_averages(player_id: int) -> Dict[str, Any]:
         player_id: Player ID to get stats for
         
     Returns:
-        Dictionary of player season stats
+        Dictionary of player season stats or empty dict if not available
     """
     logger.info(f"Fetching season averages for player {player_id}")
+    
+    # Skip very large player IDs which are likely invalid in the BallDontLie API
+    # The BallDontLie API typically uses smaller IDs (under 1000000) for active players
+    if player_id > 1000000:
+        logger.warning(f"Player ID {player_id} appears to be outside of expected range for BallDontLie API")
+        return {}
     
     # API endpoint
     stats_endpoint = f"{API_BASE_URL}/season_averages"
     
-    # API query parameters
+    # API query parameters - simple version first
     params = {
-        "player_ids[]": player_id,
         "season": datetime.now().year if datetime.now().month > 9 else datetime.now().year - 1
     }
+    
+    # Try to load from cache first
+    cache_file = DATA_DIR / f"player_stats_{player_id}.json"
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as f:
+                cached_stats = json.load(f)
+            
+            # Check if cache is recent (less than 24 hours old)
+            cache_timestamp = datetime.fromtimestamp(cache_file.stat().st_mtime)
+            if datetime.now() - cache_timestamp < timedelta(hours=24):
+                logger.info(f"Using cached stats for player {player_id} (from {cache_timestamp})")
+                return cached_stats
+            else:
+                logger.info(f"Cached stats for player {player_id} are outdated, fetching fresh data")
+        except Exception as e:
+            logger.warning(f"Failed to load cached stats for player {player_id}: {str(e)}")
     
     # Get API key from environment or configuration
     api_key = os.environ.get("BALLDONTLIE_API_KEY")
@@ -260,79 +282,69 @@ def get_season_averages(player_id: int) -> Dict[str, Any]:
     
     if api_key:
         headers["Authorization"] = api_key
+        
+    # Make API request with retries
+    response = None
+    retry_count = 0
     
-    try:
-        # Try to load from cache first
-        cache_file = DATA_DIR / f"player_stats_{player_id}.json"
-        if cache_file.exists():
-            try:
-                with open(cache_file, 'r') as f:
-                    cached_stats = json.load(f)
-                
-                # Check if cache is recent (less than 24 hours old)
-                cache_timestamp = datetime.fromtimestamp(cache_file.stat().st_mtime)
-                if datetime.now() - cache_timestamp < timedelta(hours=24):
-                    logger.info(f"Using cached stats for player {player_id} (from {cache_timestamp})")
-                    return cached_stats
-                else:
-                    logger.info(f"Cached stats for player {player_id} are outdated, fetching fresh data")
-            except Exception as e:
-                logger.warning(f"Failed to load cached stats for player {player_id}: {str(e)}")
-        
-        # Make API request with retries
-        response = None
-        retry_count = 0
-        
-        while retry_count < MAX_RETRIES:
-            try:
-                response = requests.get(
-                    stats_endpoint, 
-                    params=params, 
-                    headers=headers,
-                    timeout=DEFAULT_API_TIMEOUT
-                )
-                response.raise_for_status()  # Raise exception for HTTP errors
-                break  # Exit the retry loop if successful
-            except requests.RequestException as e:
-                retry_count += 1
-                logger.warning(f"API request failed for player {player_id} (attempt {retry_count}): {str(e)}")
-                
-                if retry_count >= MAX_RETRIES:
-                    logger.error(f"Failed to fetch stats for player {player_id} after {MAX_RETRIES} attempts")
-                    raise
-                
-                # Wait before retrying
-                import time
-                time.sleep(RETRY_DELAY * retry_count)  # Exponential backoff
-        
-        # Parse the response
-        if response and response.status_code == 200:
-            data = response.json()
-            stats = data.get('data', [])
+    while retry_count < MAX_RETRIES:
+        try:
+            # Direct approach - use the requests library's params support
+            response = requests.get(
+                stats_endpoint,
+                params={
+                    "season": params["season"],
+                    "player_ids[]": player_id
+                },
+                headers=headers,
+                timeout=DEFAULT_API_TIMEOUT
+            )
             
-            if not stats:
-                logger.warning(f"No season averages found for player {player_id}")
-                return {}
-            else:
-                logger.info(f"Successfully fetched season averages for player {player_id}")
-                
-                # Cache the response for future use
-                try:
-                    with open(cache_file, 'w') as f:
-                        json.dump(stats[0], f)
-                    logger.info(f"Cached player stats to {cache_file}")
-                except Exception as e:
-                    logger.warning(f"Failed to cache player stats: {str(e)}")
-                
-                return stats[0]
-        else:
-            logger.error(f"Failed to fetch stats for player {player_id}: HTTP {response.status_code if response else 'No response'}")
-            return {}
+            # For debugging
+            logger.debug(f"Request URL: {response.url}")
+            
+            # Check for client errors (4xx) - these won't be fixed by retrying
+            if response.status_code >= 400 and response.status_code < 500:
+                logger.warning(f"Client error {response.status_code} for player {player_id}. Player may not exist in API.")
+                return {}  # Return empty dict instead of raising an error
+            
+            response.raise_for_status()  # Raise exception for other HTTP errors
+            break  # Exit the retry loop if successful
+        except requests.RequestException as e:
+            retry_count += 1
+            logger.warning(f"API request failed for player {player_id} (attempt {retry_count}): {str(e)}")
+            
+            if retry_count >= MAX_RETRIES:
+                logger.error(f"Failed to fetch stats for player {player_id} after {MAX_RETRIES} attempts")
+                return {}  # Return empty dict instead of raising
+            
+            # Wait before retrying
+            import time
+            time.sleep(RETRY_DELAY * retry_count)  # Exponential backoff
     
+    # Parse the response
+    try:
+        data = response.json()
+        
+        if not data or "data" not in data or not data["data"]:
+            logger.warning(f"No season stats available for player {player_id}")
+            return {}
+        
+        # Extract the player stats
+        stats = data["data"][0]  # Just get the first entry
+        
+        # Cache the stats
+        try:
+            with open(cache_file, 'w') as f:
+                json.dump(stats, f)
+            logger.info(f"Cached stats for player {player_id}")
+        except Exception as e:
+            logger.warning(f"Failed to cache stats for player {player_id}: {str(e)}")
+        
+        return stats
     except Exception as e:
-        logger.error(f"Error fetching season averages for player {player_id}: {str(e)}")
-        logger.error(traceback.format_exc())
-        return {}
+        logger.error(f"Error parsing stats response for player {player_id}: {str(e)}")
+        return {}  # Return empty dict instead of raising
 
 
 def get_player_stats(player_id: int) -> Dict[str, Any]:
@@ -346,9 +358,14 @@ def get_player_stats(player_id: int) -> Dict[str, Any]:
         player_id: Player ID to get stats for
         
     Returns:
-        Dictionary of player stats with enriched data
+        Dictionary of player stats with enriched data or empty dict if not available
     """
     logger.info(f"Fetching comprehensive stats for player {player_id}")
+    
+    # Skip very large player IDs which are likely invalid in the BallDontLie API
+    if player_id > 1000000:
+        logger.warning(f"Player ID {player_id} appears to be outside of expected range for BallDontLie API")
+        return {}
     
     try:
         # Get season averages
@@ -356,7 +373,7 @@ def get_player_stats(player_id: int) -> Dict[str, Any]:
         
         if not season_stats:
             logger.warning(f"No season stats available for player {player_id}")
-            raise ValueError(f"Failed to retrieve season statistics for player ID {player_id}")
+            return {}
         
         # Add additional derived metrics
         enhanced_stats = season_stats.copy()
@@ -436,4 +453,4 @@ def get_player_stats(player_id: int) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting comprehensive stats for player {player_id}: {str(e)}")
         logger.error(traceback.format_exc())
-        raise
+        return {}

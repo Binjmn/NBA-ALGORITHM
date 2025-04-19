@@ -130,6 +130,16 @@ def run_predictions(models: Dict[str, Any], features_df: pd.DataFrame) -> pd.Dat
         # Calculate prediction confidence based on model agreement
         results_df['prediction_confidence'] = 0.7  # Default moderate confidence
         
+        # Adjust confidence for games with missing historical data
+        if 'missing_historical_data' in results_df.columns:
+            for idx, row in results_df.iterrows():
+                if row.get('missing_historical_data', 0) == 1.0:
+                    logger.warning(f"Reducing confidence for game {row.get('game_id')} due to missing historical data")
+                    # Reduce confidence by half for games with missing historical data
+                    results_df.at[idx, 'prediction_confidence'] = results_df.at[idx, 'prediction_confidence'] * 0.5
+                    # Mark the prediction as based on limited data
+                    results_df.at[idx, 'prediction_method'] = 'limited_historical_data'
+        
         if 'spread' in models and 'moneyline' in models:
             from ..utils.math_utils import calculate_prediction_confidence
             
@@ -333,3 +343,153 @@ def predict_todays_games(games: List[Dict], team_stats: Dict, models: Dict) -> D
         logger.error(f"Unexpected error during game predictions: {str(e)}")
         logger.error("Returning empty predictions dictionary")
         return {}
+
+
+def ensemble_prediction(models: Dict[str, Any], features: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate ensemble predictions by combining multiple models
+    
+    Args:
+        models: Dictionary of models for ensemble prediction
+        features: DataFrame with game features
+        
+    Returns:
+        DataFrame with ensemble predictions
+    """
+    if not models or features.empty:
+        logger.warning("No models or features for ensemble prediction")
+        return pd.DataFrame()
+    
+    # Create a copy of the input DataFrame for results
+    results = features.copy()
+    
+    # Track individual model predictions for ensemble voting
+    model_predictions = {}
+    model_probabilities = {}
+    
+    # Get predictions from each model
+    for model_name, model in models.items():
+        try:
+            if model_name.endswith('_win_predictor'):
+                # Classification model (win prediction)
+                if hasattr(model, 'predict_proba'):
+                    probas = model.predict_proba(features)
+                    model_probabilities[model_name] = probas[:, 1]  # Probability of class 1 (home win)
+                
+                preds = model.predict(features)
+                model_predictions[model_name] = preds
+                logger.debug(f"Model {model_name} predictions: {preds}")
+            
+            # Add other model types here if needed
+            
+        except Exception as e:
+            logger.error(f"Error making prediction with {model_name}: {str(e)}")
+    
+    # Calculate ensemble probabilities using weighted averaging
+    if model_probabilities:
+        # Simple average of probabilities
+        results['ensemble_win_probability'] = np.mean(list(model_probabilities.values()), axis=0)
+        
+        # Make a binary prediction based on the probability
+        results['ensemble_win_prediction'] = (results['ensemble_win_probability'] > 0.5).astype(int)
+    
+    return results
+
+
+def predict_game_outcomes(models: Dict[str, Any], games: List[Dict], team_stats: Dict) -> pd.DataFrame:
+    """
+    Main prediction function for game outcomes using all available models
+    
+    Args:
+        models: Dictionary of loaded prediction models
+        games: List of game dictionaries from the API
+        team_stats: Dictionary of team statistics
+        
+    Returns:
+        DataFrame with comprehensive game predictions
+    """
+    logger.info(f"Predicting outcomes for {len(games)} games")
+    predictions = []
+    
+    # Even if feature preparation fails, we should provide basic predictions
+    for game in games:
+        try:
+            home_team = game.get('home_team', {})
+            visitor_team = game.get('visitor_team', {})
+            
+            if not home_team or not visitor_team:
+                logger.warning(f"Missing team data for game {game.get('id')}")
+                continue
+                
+            home_id = home_team.get('id')
+            visitor_id = visitor_team.get('id')
+            
+            if not home_id or not visitor_id:
+                logger.warning(f"Missing team IDs for game {game.get('id')}")
+                continue
+            
+            # Extract basic team statistics
+            home_stats = team_stats.get(home_id, {})
+            visitor_stats = team_stats.get(visitor_id, {})
+            
+            if not home_stats or not visitor_stats:
+                logger.warning(f"Missing team statistics for game {game.get('id')}")
+                continue
+            
+            # Calculate home win probability based on simple win percentage comparison
+            home_win_pct = home_stats.get('win_pct', 0.5)
+            visitor_win_pct = visitor_stats.get('win_pct', 0.5)
+            
+            # Apply home court advantage (typically around 3-5% in NBA)
+            home_advantage = 0.04  # 4% home court advantage
+            adjusted_home_win_pct = min(1.0, home_win_pct + home_advantage)
+            
+            # Simple formula for win probability
+            if adjusted_home_win_pct + visitor_win_pct > 0:
+                home_win_probability = adjusted_home_win_pct / (adjusted_home_win_pct + visitor_win_pct)
+            else:
+                home_win_probability = 0.5  # Default to 50% if no data
+            
+            # Estimate point spread (negative means home favorite)
+            est_home_points = home_stats.get('points_pg', 110.0)
+            est_visitor_points = visitor_stats.get('points_pg', 110.0)
+            est_home_defense = home_stats.get('defensive_rating', 110.0)
+            est_visitor_defense = visitor_stats.get('defensive_rating', 110.0)
+            
+            # Simple point differential estimate
+            point_diff = (est_home_points - est_visitor_defense/100*est_home_points) - \
+                         (est_visitor_points - est_home_defense/100*est_visitor_points)
+            
+            # Add home court advantage (typically 2-4 points)
+            point_diff += 3.0
+            
+            # Create prediction entry
+            prediction = {
+                'game_id': game.get('id'),
+                'date': game.get('date', ''),
+                'home_team': home_team.get('full_name', ''),
+                'visitor_team': visitor_team.get('full_name', ''),
+                'home_win_probability': home_win_probability,
+                'visitor_win_probability': 1.0 - home_win_probability,
+                'predicted_winner': home_team.get('full_name') if home_win_probability > 0.5 else visitor_team.get('full_name'),
+                'spread': -point_diff,  # Negative means home favorite in betting odds
+                'prediction_method': 'fallback',
+                'confidence': 'low'  # Fallback predictions should have low confidence
+            }
+            
+            predictions.append(prediction)
+            logger.info(f"Created fallback prediction for {visitor_team.get('full_name')} @ {home_team.get('full_name')}")
+            
+        except Exception as e:
+            logger.warning(f"Error creating fallback prediction for game {game.get('id')}: {str(e)}")
+            continue
+    
+    # Convert to DataFrame
+    if predictions:
+        predictions_df = pd.DataFrame(predictions)
+        logger.info(f"Created fallback predictions for {len(predictions)} games")
+        return predictions_df
+    else:
+        logger.error("Failed to create any predictions, returning empty DataFrame")
+        # Return empty DataFrame with expected columns
+        return pd.DataFrame(columns=['game_id', 'date', 'home_team', 'visitor_team', 'home_win_probability', 'spread'])

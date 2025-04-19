@@ -1,0 +1,120 @@
+{
+  "models": {
+    "bayesian": {
+      "1745012235": {
+        "name": "bayesian",
+        "version": 1745012235,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.57,
+          "precision": 0.590297619047619,
+          "recall": 0.57,
+          "f1_score": 0.5128559842428456,
+          "calibration_error": 0.17051107066374174
+        },
+        "registered_at": "2025-04-18T17:37:15.378336",
+        "path": "models\\registry\\bayesian_1745012235.pkl"
+      },
+      "1745014199": {
+        "name": "bayesian",
+        "version": 1745014199,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.57,
+          "precision": 0.590297619047619,
+          "recall": 0.57,
+          "f1_score": 0.5128559842428456,
+          "calibration_error": 0.17051107066374174
+        },
+        "registered_at": "2025-04-18T18:09:59.257767",
+        "path": "models\\registry\\bayesian_1745014199.pkl"
+      },
+      "1745014365": {
+        "name": "bayesian",
+        "version": 1745014365,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.57,
+          "precision": 0.590297619047619,
+          "recall": 0.57,
+          "f1_score": 0.5128559842428456,
+          "calibration_error": 0.17051107066374174
+        },
+        "registered_at": "2025-04-18T18:12:45.046961",
+        "path": "models\\registry\\bayesian_1745014365.pkl"
+      },
+      "1745014853": {
+        "name": "bayesian",
+        "version": 1745014853,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.57,
+          "precision": 0.590297619047619,
+          "recall": 0.57,
+          "f1_score": 0.5128559842428456,
+          "calibration_error": 0.17051107066374174
+        },
+        "registered_at": "2025-04-18T18:20:53.540878",
+        "path": "models\\registry\\bayesian_1745014853.pkl"
+      },
+      "1745015902": {
+        "name": "bayesian",
+        "version": 1745015902,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.5299145299145299,
+          "precision": 0.514180602006689,
+          "recall": 0.5299145299145299,
+          "f1_score": 0.48760875710651125,
+          "calibration_error": 0.24576246854672476
+        },
+        "registered_at": "2025-04-18T18:38:22.876090",
+        "path": "models\\registry\\bayesian_1745015902.pkl"
+      },
+      "1745016625": {
+        "name": "bayesian",
+        "version": 1745016625,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.5299145299145299,
+          "precision": 0.514180602006689,
+          "recall": 0.5299145299145299,
+          "f1_score": 0.48760875710651125,
+          "calibration_error": 0.24576246854672476
+        },
+        "registered_at": "2025-04-18T18:50:25.349489",
+        "path": "models\\registry\\bayesian_1745016625.pkl"
+      },
+      "1745017064": {
+        "name": "bayesian",
+        "version": 1745017064,
+        "type": "moneyline",
+        "metrics": {
+          "accuracy": 0.5299145299145299,
+          "precision": 0.514180602006689,
+          "recall": 0.5299145299145299,
+          "f1_score": 0.48760875710651125,
+          "calibration_error": 0.24576246854672476
+        },
+        "registered_at": "2025-04-18T18:57:44.384620",
+        "path": "models\\registry\\bayesian_1745017064.pkl"
+      }
+    }
+  },
+  "production_models": {
+    "moneyline": {
+      "name": "bayesian",
+      "version": 1745017064,
+      "set_at": "2025-04-18T18:57:44.385793"
+    }
+  },
+  "model_types": [
+    "moneyline",
+    "spread",
+    "total",
+    "player_props_points",
+    "player_props_rebounds",
+    "player_props_assists"
+  ],
+  "last_updated": "2025-04-18T18:57:44.385869"
+}

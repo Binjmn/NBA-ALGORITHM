@@ -49,29 +49,38 @@ class BallDontLieClient(BaseAPIClient):
     
     def __init__(self):
         """
-        Initialize the BallDontLie API client
+        Initialize the BallDontLie API client with authentication
+        
+        Base URL: https://api.balldontlie.io/v1
+        Documentation: https://www.balldontlie.io/home.html#api-documentation
         """
-        api_key = get_api_key('balldontlie')
+        # Get API key directly from environment variable first, then fall back to config
+        api_key = os.environ.get('BALLDONTLIE_API_KEY')
+        
+        if api_key:
+            logger.info("Using BallDontLie API key from environment variable")
+        else:
+            # Fall back to config if not in environment
+            api_key = get_api_key('balldontlie')
+            logger.info("Using BallDontLie API key from configuration file")
+        
         if not api_key:
-            raise ValueError("BallDontLie API key not found")
+            logger.warning("BallDontLie API key not found or empty")
+        else:
+            # Don't log the full key, just a masked version for security
+            masked_key = f"{api_key[:6]}...{api_key[-4:]}" if len(api_key) > 10 else "***masked***"
+            logger.info(f"BallDontLie API key loaded (masked: {masked_key})")
         
-        # Define time-sensitive endpoints that should have a shorter cache TTL
-        time_sensitive_endpoints = [
-            'odds',              # Betting odds change frequently
-            'box_scores/live',   # Live game data should be very fresh
-            'player_injuries',   # Injury reports can change suddenly
-            'games'              # Game statuses can change
-        ]
-        
+        # Initialize the base client with authentication
         super().__init__(
             base_url="https://api.balldontlie.io/v1",
             api_key=api_key,
-            rate_limit=1000000,  # Effectively unlimited (1 million)
-            rate_limit_period=60,  # Per minute rather than monthly
-            cache_ttl=3600,  # Regular data cache for 1 hour
-            time_sensitive_endpoints=time_sensitive_endpoints,
-            time_sensitive_ttl=300  # Time-sensitive data cached for only 5 minutes
+            auth_header_prefix="Bearer",  # BallDontLie requires 'Bearer' prefix
+            rate_limit=60,                # 60 requests per minute
+            cache_enabled=True,
+            cache_dir="cache/balldontlie"
         )
+        
         logger.info("Initialized BallDontLie API client")
     
     def get_teams(self, page: int = 1, per_page: int = 100) -> Dict[str, Any]:
@@ -706,3 +715,36 @@ class BallDontLieClient(BaseAPIClient):
             params['period'] = period
             
         return self.request('plays', params=params)
+
+    def request(self, endpoint: str, method: str = 'GET', params: Optional[Dict] = None, data: Optional[Dict] = None):
+        """
+        Make a request to the BallDontLie API with proper authentication
+        
+        Args:
+            endpoint: API endpoint (without base URL)
+            method: HTTP method (GET, POST, etc.)
+            params: Query parameters
+            data: Request body data
+            
+        Returns:
+            API response data
+        """
+        # Always ensure the Authorization header is set correctly for BallDontLie API
+        # Try a few different auth header formats since their requirement might have changed
+        headers = {
+            # Format 1: Just the key without prefix
+            'Authorization': self.api_key,
+            
+            # Format 2: X-API-KEY header (sometimes used by APIs)
+            'X-API-KEY': self.api_key
+        }
+        
+        # Try using the key as a query parameter instead of a header
+        params = params or {}
+        params['api_key'] = self.api_key
+        
+        # Log extensive debug info
+        logger.debug(f"Making request to BallDontLie API: {endpoint} with params: {params}")
+        
+        # Use the base client's request method with our custom headers
+        return super().request(endpoint, method=method, params=params, data=data, headers=headers)

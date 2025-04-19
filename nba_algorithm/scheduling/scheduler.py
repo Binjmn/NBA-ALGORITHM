@@ -622,63 +622,48 @@ def retrain_models_with_feature_evolution():
                 logger.info(f"No production model found for {pred_type} - scheduling training")
                 models_to_retrain.append(pred_type)
         
-        if not models_to_retrain:
-            logger.info("No models currently need retraining")
-            return
-        
-        # Retrain the selected models
-        logger.info(f"Will retrain the following models: {', '.join(models_to_retrain)}")
-        
-        # Import the training module - this should be updated to use the new systems
-        from nba_algorithm.models.training import train_model
-        
-        for pred_type in models_to_retrain:
-            logger.info(f"Retraining {pred_type} model with optimized features")
+        if models_to_retrain:
+            logger.info(f"Models scheduled for retraining: {', '.join(models_to_retrain)}")
             
-            # Get optimized features for this model type
-            optimized_features = feature_evolution.get_production_feature_set(pred_type)
+            # Use our enhanced training pipeline for all retraining
+            training_script = os.path.join(PROJECT_ROOT, "src", "models", "training_pipeline.py")
             
-            # Train the model
-            success, model_version, performance_metrics = train_model(
-                model_type=pred_type,
-                feature_list=optimized_features,
-                force_retrain=True
-            )
-            
-            if success:
-                logger.info(f"Successfully retrained {pred_type} model (version: {model_version})")
-                
-                # Check if this model should be promoted to production
-                current_model = model_registry.get_production_model(pred_type)
-                if current_model is None:
-                    # No existing production model, immediately set this one
-                    model_registry.set_production_model(f"{pred_type}_model", pred_type, model_version)
-                    logger.info(f"Set {pred_type} model version {model_version} as production (no previous version)")
-                else:
-                    # Compare with existing production model
-                    current_model_id = model_registry.production_models[pred_type]["id"]
-                    new_model_id = f"{pred_type}_model_{model_version}"  # This ID format should match what's in train_model
+            if os.path.exists(training_script):
+                try:
+                    # Prepare command line arguments
+                    cmd = [sys.executable, training_script]
                     
-                    # Set up A/B test
-                    test_name = f"{pred_type}_ab_test_{today.replace('-', '')}"
+                    # Add specific configuration arguments based on what needs retraining
+                    if "player_props" in models_to_retrain:
+                        # Ensure player props are trained
+                        pass  # Player props are automatically included in enhanced pipeline
+                    else:
+                        # Skip player props training if not needed
+                        cmd.append("--skip-player-props")
                     
-                    test_id = model_registry.setup_ab_test(
-                        model_type=pred_type,
-                        model_a_id=current_model_id,
-                        model_b_id=new_model_id,
-                        test_name=test_name
+                    # Run the enhanced training pipeline
+                    logger.info(f"Running enhanced training pipeline: {training_script}")
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        cwd=PROJECT_ROOT
                     )
                     
-                    logger.info(f"Created A/B test '{test_name}' between current and new {pred_type} models")
-                    
-                    # If the new model is clearly better based on training metrics,
-                    # we can promote it immediately; otherwise, we'll evaluate through the A/B test
-                    # This is a simplified heuristic and could be made more sophisticated
-                    if performance_metrics.get("improvement_percentage", 0) > 5:  # More than 5% improvement
-                        model_registry.promote_ab_test_winner(test_id, winner='b')  # b is the challenger
-                        logger.info(f"Immediately promoted new {pred_type} model as it shows >5% improvement")
+                    if result.returncode == 0:
+                        logger.info("Enhanced training pipeline completed successfully")
+                        # Log abbreviated output to avoid excessive logging
+                        log_output = result.stdout[:500] + "..." if len(result.stdout) > 500 else result.stdout
+                        logger.info(f"Training output: {log_output}")
+                    else:
+                        logger.error(f"Enhanced training pipeline failed with code {result.returncode}")
+                        logger.error(f"Error: {result.stderr}")
+                except Exception as e:
+                    logger.error(f"Error running enhanced training pipeline: {str(e)}")
             else:
-                logger.error(f"Failed to retrain {pred_type} model")
+                logger.error(f"Enhanced training pipeline not found at {training_script}")
+                # Fallback to the older method
+                train_models_if_needed()
         
         # Generate summary of retraining
         registry_summary = model_registry.get_registry_summary()

@@ -5,8 +5,7 @@ This module provides the BaseModel class that serves as a foundation for all pre
 models in the system. It defines common interfaces and functionality that all models
 should implement.
 
-The BaseModel handles model persistence, serialization, loading from the database,
-and shared evaluation metrics.
+The BaseModel handles model persistence, serialization, and shared evaluation metrics.
 """
 
 import logging
@@ -14,14 +13,12 @@ import os
 import json
 import pickle
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-from src.database.models import ModelWeight, ModelPerformance
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -203,6 +200,11 @@ class BaseModel(ABC):
             if version is None:
                 # Find all metadata files for this model
                 model_prefix = f"{self.name.lower()}_v"
+                
+                if not os.path.exists(models_dir):
+                    logger.error(f"Models directory not found: {models_dir}")
+                    return False
+                    
                 metadata_files = [f for f in os.listdir(models_dir) if f.startswith(model_prefix) and f.endswith('_metadata.json')]
                 
                 if not metadata_files:
@@ -249,146 +251,54 @@ class BaseModel(ABC):
             logger.error(f"Error loading model {self.name} from disk: {str(e)}")
             return False
     
-    def save_to_db(self) -> bool:
-        """
-        Save the model to the database
-        
-        Returns:
-            bool: True if saving was successful, False otherwise
-        """
-        if not self.is_trained:
-            logger.error(f"Cannot save untrained model: {self.name}")
-            return False
-        
-        try:
-            # Get feature importance
-            feature_importance = self.get_feature_importance()
-            
-            # Create model weights dictionary
-            model_data = {
-                'model_name': self.name,
-                'model_type': self.model_type,
-                'weights': {
-                    'feature_importances': feature_importance,
-                    # Additional model-specific weights can be added by subclasses
-                },
-                'params': self.params,
-                'version': self.version,
-                'trained_at': self.trained_at or datetime.now(timezone.utc),
-                'active': True
-            }
-            
-            # Save to database
-            model_id = ModelWeight.create(model_data)
-            
-            if model_id:
-                logger.info(f"Model {self.name} v{self.version} saved to database with ID {model_id}")
-                
-                # Deactivate old versions
-                ModelWeight.deactivate_old_versions(self.name, self.version)
-                
-                return True
-            else:
-                logger.error(f"Failed to save model {self.name} to database")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error saving model {self.name} to database: {str(e)}")
-            return False
-    
-    def load_from_db(self, version: Optional[int] = None) -> bool:
-        """
-        Load the model from the database
-        
-        Args:
-            version: Specific version to load, or latest active if None
-            
-        Returns:
-            bool: True if loading was successful, False otherwise
-        """
-        try:
-            # Find the model in the database
-            if version is None:
-                # Get the latest active version
-                model_data = ModelWeight.find_latest_active(self.name)
-            else:
-                # Find the specific version
-                # This is a simplified example - in a real implementation,
-                # you would need to add a method to find a specific version
-                model_data = None
-                
-            if not model_data:
-                logger.error(f"No model data found for {self.name} in the database")
-                return False
-            
-            # Update model attributes from database
-            self.version = model_data['version']
-            self.model_type = model_data['model_type']
-            self.params = model_data['params']
-            self.trained_at = model_data['trained_at']
-            
-            # Here you would need to deserialize the model
-            # This is just a placeholder - actual implementation would depend on how models are stored
-            # For example, models might be stored as pickle files with paths in the database
-            # or serialized directly into the database
-            
-            # For this example, we'll assume the model needs to be loaded from disk
-            # using the path stored in the database
-            model_path = model_data['weights'].get('model_path', '')
-            if model_path and os.path.exists(model_path):
-                with open(model_path, 'rb') as f:
-                    self.model = pickle.load(f)
-                    
-                self.is_trained = True
-                logger.info(f"Model {self.name} v{self.version} loaded from database")
-                return True
-            else:
-                logger.error(f"Model file not found: {model_path}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error loading model {self.name} from database: {str(e)}")
-            return False
-    
     def record_performance(self, metrics: Dict[str, float], prediction_type: str, num_predictions: int, time_window: str = '7d') -> bool:
         """
-        Record model performance metrics in the database
+        Record the performance metrics of the model for a specific prediction type and time window
         
         Args:
-            metrics: Dictionary of performance metrics
-            prediction_type: Type of prediction (e.g., 'moneyline', 'spread', 'player_points')
-            num_predictions: Number of predictions evaluated
-            time_window: Time window for the metrics (e.g., '7d', '30d', 'season')
+            metrics: Dictionary of performance metrics (accuracy, precision, recall, f1, etc.)
+            prediction_type: Type of prediction (moneyline, spread, total, etc.)
+            num_predictions: Number of predictions made
+            time_window: Time window for the metrics (e.g., '7d' for 7 days)
             
         Returns:
-            bool: True if recording was successful, False otherwise
+            bool: True if performance was successfully recorded
         """
         try:
+            # Create the performance data structure
+            timestamp = datetime.now(timezone.utc).isoformat()
             performance_data = {
                 'model_name': self.name,
-                'date': datetime.now(timezone.utc),
-                'metrics': metrics,
+                'model_version': self.version,
                 'prediction_type': prediction_type,
+                'metrics': metrics,
                 'num_predictions': num_predictions,
+                'timestamp': timestamp,
                 'time_window': time_window
             }
             
-            perf_id = ModelPerformance.create(performance_data)
+            # Save the performance data to disk
+            performance_dir = os.path.join('data', 'performance')
+            os.makedirs(performance_dir, exist_ok=True)
             
-            if perf_id:
-                logger.info(f"Performance metrics for {self.name} recorded with ID {perf_id}")
-                return True
-            else:
-                logger.error(f"Failed to record performance metrics for {self.name}")
-                return False
+            # Create a unique filename based on model, prediction type, and timestamp
+            filename = f"{self.name.lower()}_{prediction_type}_{int(datetime.now().timestamp())}.json"
+            file_path = os.path.join(performance_dir, filename)
+            
+            # Save as JSON
+            with open(file_path, 'w') as f:
+                json.dump(performance_data, f, indent=2)
                 
-        except Exception as e:
-            logger.error(f"Error recording performance metrics for {self.name}: {str(e)}")
-            return False
+            logger.info(f"Model performance recorded to {file_path}")
+            return True
             
+        except Exception as e:
+            logger.error(f"Error recording model performance: {str(e)}")
+            return False
+    
     def get_latest_performance(self, prediction_type: str, time_window: str = '7d') -> Optional[Dict[str, Any]]:
         """
-        Get the latest performance metrics for this model
+        Get the latest performance metrics for this model from disk
         
         Args:
             prediction_type: Type of prediction (e.g., 'moneyline', 'spread', 'player_points')
@@ -398,14 +308,34 @@ class BaseModel(ABC):
             Dictionary containing performance data or None if not found
         """
         try:
-            return ModelPerformance.get_latest_performance(self.name, prediction_type, time_window, time_window_column='time_window')
+            perf_dir = os.path.join('data', 'performance')
+            if not os.path.exists(perf_dir):
+                logger.warning(f"Performance directory not found: {perf_dir}")
+                return None
+                
+            # Find all performance files for this model, prediction type, and time window
+            prefix = f"{self.name}_{prediction_type}_{time_window}_"
+            performance_files = [f for f in os.listdir(perf_dir) if f.startswith(prefix) and f.endswith('.json')]
+            
+            if not performance_files:
+                logger.warning(f"No performance data found for {self.name}, {prediction_type}, {time_window}")
+                return None
+                
+            # Sort by timestamp (which is embedded in the filename)
+            performance_files.sort(reverse=True)
+            
+            # Load the latest performance file
+            latest_file = os.path.join(perf_dir, performance_files[0])
+            with open(latest_file, 'r') as f:
+                return json.load(f)
+                
         except Exception as e:
             logger.error(f"Error getting latest performance for {self.name}: {str(e)}")
             return None
     
     def get_performance_trend(self, prediction_type: str, time_window: str = '7d', days: int = 30) -> List[Dict[str, Any]]:
         """
-        Get the performance trend for this model over time
+        Get the performance trend for this model over time from disk
         
         Args:
             prediction_type: Type of prediction
@@ -416,7 +346,37 @@ class BaseModel(ABC):
             List of dictionaries containing performance data ordered by date
         """
         try:
-            return ModelPerformance.get_performance_trend(self.name, prediction_type, time_window, days, time_window_column='time_window')
+            perf_dir = os.path.join('data', 'performance')
+            if not os.path.exists(perf_dir):
+                logger.warning(f"Performance directory not found: {perf_dir}")
+                return []
+                
+            # Find all performance files for this model, prediction type, and time window
+            prefix = f"{self.name}_{prediction_type}_{time_window}_"
+            performance_files = [f for f in os.listdir(perf_dir) if f.startswith(prefix) and f.endswith('.json')]
+            
+            if not performance_files:
+                logger.warning(f"No performance data found for {self.name}, {prediction_type}, {time_window}")
+                return []
+                
+            # Load all performance files
+            performances = []
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            
+            for filename in performance_files:
+                file_path = os.path.join(perf_dir, filename)
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    
+                    # Check if the performance data is within the specified time range
+                    perf_date = datetime.fromisoformat(data['date'])
+                    if perf_date >= cutoff_date:
+                        performances.append(data)
+            
+            # Sort by date
+            performances.sort(key=lambda x: x['date'])
+            return performances
+                
         except Exception as e:
             logger.error(f"Error getting performance trend for {self.name}: {str(e)}")
             return []

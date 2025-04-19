@@ -13,7 +13,7 @@ import logging
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Union
 from datetime import datetime
-from ..data.odds_data import OddsApiCollector
+from ..data.odds_data import fetch_betting_odds
 
 logger = logging.getLogger(__name__)
 
@@ -101,27 +101,33 @@ class CLVTracker:
         """
         Initialize the CLV Tracker
         """
-        self.odds_collector = OddsApiCollector()
+        self.odds_collector = fetch_betting_odds
         self.tracked_bets = []
         self.market_snapshots = {}
     
-    def track_odds_movement(self, game_id: str, market_type: str = "h2h") -> Dict:
+    def get_current_odds(self, game_id, market_type=None):
         """
-        Track and store current market odds for a game
+        Get current odds for a game
         
         Args:
-            game_id: Unique identifier for the game
-            market_type: Type of market (h2h, spreads, totals)
+            game_id: ID of the game
+            market_type: Optional market type to get odds for
             
         Returns:
             Dict: Current odds data with timestamp
         """
         try:
-            # Get current odds from API
-            odds_data = self.odds_collector.get_odds_for_game(game_id, market_type)
+            # Create a minimal game dictionary that fetch_betting_odds can use
+            mock_game = {"id": game_id, "home_team": {"id": ""}, "visitor_team": {"id": ""}}
+            
+            # Call fetch_betting_odds with a list containing our game
+            odds_data_dict = self.odds_collector([mock_game])
+            
+            # Extract odds for our specific game
+            odds_data = odds_data_dict.get(game_id, {})
             
             if not odds_data:
-                logger.warning(f"No odds data available for game ID {game_id}, market {market_type}")
+                logger.warning(f"No odds data available for game ID {game_id}")
                 return {}
             
             # Add timestamp
@@ -139,9 +145,23 @@ class CLVTracker:
             
             return odds_data
         except Exception as e:
-            logger.error(f"Error tracking odds movement: {str(e)}")
+            logger.error(f"Error getting current odds: {str(e)}")
             return {}
     
+    def track_odds_movement(self, game_id: str, market_type: str = "h2h") -> Dict:
+        """
+        Track and store current market odds for a game
+        
+        Args:
+            game_id: Unique identifier for the game
+            market_type: Type of market (h2h, spreads, totals)
+            
+        Returns:
+            Dict: Current odds data with timestamp
+        """
+        # Delegate to get_current_odds for implementation
+        return self.get_current_odds(game_id, market_type)
+        
     def record_bet(self, game_id: str, bet_type: str, selection: str, 
                  odds: float, stake: float) -> Dict:
         """

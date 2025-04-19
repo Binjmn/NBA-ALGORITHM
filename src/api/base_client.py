@@ -34,42 +34,53 @@ class APIError(Exception):
 class BaseAPIClient:
     """Base class for API clients with common functionality"""
     
-    def __init__(self, base_url: str, api_key: str, rate_limit: int = 60,
-                 rate_limit_period: int = 60, cache_dir: Optional[str] = None,
-                 cache_ttl: int = 3600, cache_enabled: bool = True,
+    def __init__(self, 
+                 base_url: str, 
+                 api_key: Optional[str] = None,
+                 auth_header_prefix: Optional[str] = None,
+                 rate_limit: int = 60,
+                 rate_limit_period: int = 60,
+                 cache_enabled: bool = True,
+                 cache_dir: Optional[str] = None,
+                 cache_ttl: int = 3600,
                  time_sensitive_endpoints: Optional[List[str]] = None,
-                 time_sensitive_ttl: int = 300):
+                 time_sensitive_ttl: int = 300,
+                 timeout: int = 30):
         """
         Initialize the API client
         
         Args:
-            base_url (str): Base URL for the API
-            api_key (str): API key for authentication
-            rate_limit (int): Maximum number of requests allowed in rate_limit_period
-            rate_limit_period (int): Time period in seconds for rate limiting
-            cache_dir (Optional[str]): Directory to store cache files
-            cache_ttl (int): Cache time-to-live in seconds (for normal data)
-            cache_enabled (bool): Whether caching is enabled by default
-            time_sensitive_endpoints (Optional[List[str]]): List of endpoints that contain time-sensitive data
-            time_sensitive_ttl (int): Cache TTL for time-sensitive endpoints (in seconds)
+            base_url: Base URL for the API
+            api_key: API key for authentication
+            auth_header_prefix: Prefix for Authorization header (e.g., 'Bearer')
+            rate_limit: Rate limit per minute
+            rate_limit_period: Time period in seconds for rate limiting
+            cache_enabled: Whether to cache responses
+            cache_dir: Directory for cache files
+            cache_ttl: Cache time-to-live in seconds (for normal data)
+            time_sensitive_endpoints: List of endpoints that contain time-sensitive data
+            time_sensitive_ttl: Cache TTL for time-sensitive endpoints (in seconds)
+            timeout: Request timeout in seconds
         """
         self.base_url = base_url.rstrip('/')
         self.api_key = api_key
+        self.auth_header_prefix = auth_header_prefix
         self.rate_limit = rate_limit
         self.rate_limit_period = rate_limit_period
-        self.cache_dir = cache_dir or os.path.join('data', 'api_cache')
-        self.cache_ttl = cache_ttl
         self.cache_enabled = cache_enabled
+        self.cache_ttl = cache_ttl
         self.time_sensitive_endpoints = time_sensitive_endpoints or []
         self.time_sensitive_ttl = time_sensitive_ttl
+        self.timeout = timeout
         
-        # Ensure cache directory exists
+        # Cache directory
+        self.cache_dir = cache_dir or os.path.join('data', 'api_cache')
         os.makedirs(self.cache_dir, exist_ok=True)
         
         # Rate limiting state
         self.request_timestamps: List[float] = []
         
-        # Session for connection pooling
+        # Set up requests session
         self.session = requests.Session()
         
         logger.info(f"Initialized API client for {base_url}")
@@ -201,115 +212,89 @@ class BaseAPIClient:
         except IOError as e:
             logger.warning(f"Error saving cache for {endpoint}: {e}")
     
-    def request(self, endpoint: str, method: str = 'GET', params: Optional[Dict[str, Any]] = None,
-                data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None,
-                use_cache: bool = True, force_refresh: bool = False, min_data_points: int = 1,
-                max_retries: int = 3, retry_delay: int = 2) -> Dict[str, Any]:
+    def request(self, endpoint: str, method: str = 'GET', params: Optional[Dict] = None, data: Optional[Dict] = None, headers: Optional[Dict] = None) -> Any:
         """
-        Make an API request with retries, rate limiting, and caching
+        Make a request to the API
         
         Args:
-            endpoint (str): API endpoint (without base URL)
-            method (str): HTTP method (GET, POST, etc.)
-            params (Optional[Dict[str, Any]]): Query parameters
-            data (Optional[Dict[str, Any]]): Request body for POST/PUT requests
-            headers (Optional[Dict[str, str]]): Additional headers
-            use_cache (bool): Whether to use cache for GET requests
-            force_refresh (bool): Whether to bypass cache and force a fresh request
-            min_data_points (int): Minimum number of data points required for caching
-            max_retries (int): Maximum number of retry attempts
-            retry_delay (int): Delay between retries in seconds
+            endpoint: API endpoint to request
+            method: HTTP method (GET, POST, etc.)
+            params: Query parameters
+            data: Request body data
+            headers: Request headers
             
         Returns:
-            Dict[str, Any]: API response
-            
-        Raises:
-            APIRateLimitExceeded: If API rate limit is exceeded
-            APIError: If API returns an error
-            RequestException: If request fails after max retries
+            API response data
         """
-        params = params or {}
+        url = f"{self.base_url}/{endpoint}"
         headers = headers or {}
         
-        # Normalize endpoint
-        endpoint = endpoint.lstrip('/')
-        url = f"{self.base_url}/{endpoint}"
+        # Add API key if available
+        if self.api_key and not headers.get('Authorization'):
+            if self.auth_header_prefix:
+                headers['Authorization'] = f"{self.auth_header_prefix} {self.api_key}"
+            else:
+                # Add as a query param instead
+                params = params or {}
+                params['apiKey'] = self.api_key
         
-        # Add API key to headers
-        headers['Authorization'] = f"{self.api_key}"
+        # Enhanced logging - log the full request details for debugging
+        debug_info = {
+            'url': url,
+            'method': method,
+            'params': params,
+            'headers': {k: v for k, v in headers.items() if k.lower() != 'authorization'} if headers else None
+        }
+        logger.debug(f"API Request: {json.dumps(debug_info, indent=2)}")
         
-        # Try to get from cache for GET requests if caching is enabled and not forcing refresh
-        if method == 'GET' and use_cache and self.cache_enabled and not force_refresh:
-            cached_response = self._get_from_cache(endpoint, params, min_data_points)
-            if cached_response is not None:
-                return cached_response
-        
-        # Wait for rate limit if necessary
-        self._wait_for_rate_limit()
-        
-        # Make request with retries
-        retries = 0
-        last_exception = None
-        
-        while retries <= max_retries:
-            try:
-                response = self.session.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=data,
-                    headers=headers,
-                    timeout=30  # 30-second timeout
-                )
-                
-                # Check for rate limiting
-                if response.status_code == 429:
-                    retry_after = int(response.headers.get('Retry-After', retry_delay))
-                    logger.warning(f"Rate limit exceeded, waiting for {retry_after} seconds")
-                    time.sleep(retry_after)
-                    retries += 1
-                    continue
-                
-                # Handle other error status codes
-                if response.status_code >= 400:
-                    error_message = f"API error: {response.status_code} - {response.text}"
-                    logger.error(error_message)
-                    
-                    if response.status_code >= 500:
-                        # Server error, retry
-                        retries += 1
-                        time.sleep(retry_delay * (2 ** retries))  # Exponential backoff
-                        continue
-                    else:
-                        # Client error, don't retry
-                        raise APIError(error_message)
-                
-                # Parse response
-                try:
-                    result = response.json()
-                except ValueError:
-                    result = {"text": response.text}
-                
-                # Cache successful GET responses if they contain valid data
-                if method == 'GET' and use_cache and self.cache_enabled and response.status_code == 200:
-                    # Only cache if the response contains valid data
-                    if self._validate_cached_data(result, min_data_points):
-                        self._save_to_cache(endpoint, params, result)
-                    else:
-                        logger.warning(f"Not caching response for {endpoint} as it contains insufficient data")
-                
-                return result
+        try:
+            if method == 'GET':
+                response = self.session.get(url, params=params, headers=headers, timeout=self.timeout)  
+            elif method == 'POST':
+                response = self.session.post(url, params=params, json=data, headers=headers, timeout=self.timeout)  
+            elif method == 'PUT':
+                response = self.session.put(url, params=params, json=data, headers=headers, timeout=self.timeout)  
+            elif method == 'DELETE':
+                response = self.session.delete(url, params=params, headers=headers, timeout=self.timeout)  
+            else:
+                logger.error(f"Unsupported HTTP method: {method}")
+                return None
             
-            except (ConnectionError, Timeout) as e:
-                last_exception = e
-                logger.warning(f"Request failed (attempt {retries+1}/{max_retries+1}): {e}")
-                retries += 1
-                time.sleep(retry_delay * (2 ** retries))  # Exponential backoff
-        
-        # If we get here, all retries failed
-        error_message = f"Max retries exceeded for {url}: {last_exception}"
-        logger.error(error_message)
-        raise APIError(error_message)
+            # Check if the request was successful
+            response.raise_for_status()
+            
+            # Try to parse the response as JSON
+            try:
+                result = response.json()
+                return result
+            except ValueError:
+                # Not JSON, return the raw text
+                return response.text
+                
+        except requests.exceptions.HTTPError as e:
+            # For HTTP errors, try to get more detailed error info from the response
+            error_detail = ""
+            try:
+                error_response = e.response.json()
+                error_detail = json.dumps(error_response)
+                
+                # Specifically log the date format if that's the issue
+                if 'INVALID_DATE_FORMAT' in error_detail:
+                    date_param = None
+                    if params and ('date' in params):
+                        date_param = params.get('date')
+                    logger.error(f"Invalid date format error - Date parameter: {date_param}")
+                    logger.error(f"Full request that caused error: {json.dumps(debug_info)}")
+                
+            except ValueError:
+                error_detail = e.response.text
+                
+            logger.error(f"API error: {e.response.status_code} - {error_detail}")
+            return None
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error: {str(e)}")
+            return None
     
     def close(self) -> None:
         """

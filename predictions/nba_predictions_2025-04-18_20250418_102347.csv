@@ -1,0 +1,3 @@
+game_id,date,home_team,visitor_team,home_win_probability,visitor_win_probability,predicted_winner,spread,prediction_method,confidence,confidence_score,season_year,season_phase,season_display,win_probability,predicted_spread,projected_total,confidence_level,moneyline_edge,moneyline_bet_pct,moneyline_bet_amount,spread_edge,spread_bet_pct,spread_bet_amount,total_edge,total_bet_pct,total_bet_amount
+18423164,2025-04-18,Atlanta Hawks,Miami Heat,0.55,0.45,Atlanta Hawks,-2.5,basic_fallback,,0.4,2025,playoffs,2024-25,0.5,0.0,0.0,low,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+18423251,2025-04-18,Memphis Grizzlies,Dallas Mavericks,0.55,0.45,Memphis Grizzlies,-2.5,basic_fallback,,0.4,2025,playoffs,2024-25,0.5,0.0,0.0,low,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

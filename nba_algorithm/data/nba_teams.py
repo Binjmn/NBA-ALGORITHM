@@ -29,6 +29,7 @@ def get_active_nba_teams(teams_data: List[Dict[str, Any]]) -> Dict[int, str]:
         Dictionary mapping team IDs to team names for active NBA teams only
     """
     active_teams = {}
+    suspicious_teams = {}
     
     # Get the current year for season identification
     current_year = datetime.now().year
@@ -42,10 +43,30 @@ def get_active_nba_teams(teams_data: List[Dict[str, Any]]) -> Dict[int, str]:
         team_id = team.get('id')
         team_name = team.get('full_name')
         
+        # Skip teams with suspiciously high IDs (likely not NBA teams)
+        if team_id > 100:  # Real NBA teams have relatively low IDs
+            logger.debug(f"Skipping team with suspiciously high ID: {team_name} (ID: {team_id})")
+            continue
+        
+        # Skip teams with outdated/historical names that we know aren't current
+        historical_indicators = ['Redskins', 'Nationals', 'Bombers', 'Steamrollers', 'Stags', 'Blackhawks', 'Olympians']
+        if any(indicator in team_name for indicator in historical_indicators):
+            logger.debug(f"Skipping historical team: {team_name} (ID: {team_id})")
+            suspicious_teams[team_id] = team_name
+            continue
+        
         # Simple check: known current NBA franchises have IDs 1-30
         # This covers the standard 30 NBA teams in most cases
         if 1 <= team_id <= 30:
             active_teams[team_id] = team_name
+        else:
+            # For teams outside the standard range, we'll validate them further
+            if team.get('conference') and team.get('division'):
+                # If a team has conference and division data, it's likely active
+                active_teams[team_id] = team_name
+            else:
+                # Keep track of suspicious teams for debugging
+                suspicious_teams[team_id] = team_name
     
     # If we didn't get a reasonable number of teams, try conference/division filtering as backup
     if len(active_teams) < 25:
@@ -136,16 +157,31 @@ def filter_games_to_active_teams(games: List[Dict[str, Any]], active_teams: Dict
     Returns:
         Filtered list of games between active NBA teams
     """
+    # Safety check for inputs
+    if not games:
+        logger.warning("No games provided to filter")
+        return []
+        
     # If no active teams identified, default to the standard 30 team IDs (1-30)
     if not active_teams:
         logger.warning("No active teams provided. Falling back to default NBA team IDs (1-30)")
         active_teams = {id: f"Team {id}" for id in range(1, 31)}
     
     filtered_games = []
+    skipped_games = 0
     
     for game in games:
+        # Safety checks for game data structure
+        if not isinstance(game, dict):
+            skipped_games += 1
+            continue
+            
         home_team = game.get('home_team', {})
         visitor_team = game.get('visitor_team', {})
+        
+        if not home_team or not visitor_team:
+            skipped_games += 1
+            continue
         
         home_id = home_team.get('id', 0)
         visitor_id = visitor_team.get('id', 0)
@@ -153,6 +189,8 @@ def filter_games_to_active_teams(games: List[Dict[str, Any]], active_teams: Dict
         # Only keep games where both teams are active NBA teams
         if home_id in active_teams and visitor_id in active_teams:
             filtered_games.append(game)
+        else:
+            skipped_games += 1
     
-    logger.info(f"Filtered {len(games)} games to {len(filtered_games)} games between active NBA teams")
+    logger.info(f"Filtered {len(games)} games to {len(filtered_games)} games between active NBA teams (skipped {skipped_games} games)")
     return filtered_games

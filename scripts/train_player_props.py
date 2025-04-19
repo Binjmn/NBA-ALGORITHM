@@ -308,13 +308,31 @@ def train_prop_models(feature_sets, args):
                         model.fit(X_numeric, y)
                     
                     # Save model
-                    model_filename = f"{model_name}_{prop_name}_{datetime.now().strftime('%Y%m%d')}.pkl"
+                    # Use production-consistent naming for player prop models
+                    if model_name == "GradientBoosting":
+                        base_model_name = "production_gradient_boosting"
+                    elif model_name == "RandomForest":
+                        base_model_name = "production_random_forest"
+                    else:
+                        base_model_name = model_name.lower()
+                    
+                    # Standard versioned model for tracking
+                    model_filename = f"{base_model_name}_{prop_name}_{datetime.now().strftime('%Y%m%d')}.pkl"
                     model_path = output_dir / model_filename
                     
+                    # Also save with standardized production name for system integration
+                    production_filename = f"{base_model_name}_{prop_name}.pkl"
+                    production_path = output_dir / production_filename
+                    
+                    # Save both versions
                     with open(model_path, 'wb') as f:
                         pickle.dump(model, f)
                     
+                    with open(production_path, 'wb') as f:
+                        pickle.dump(model, f)
+                    
                     logger.info(f"Saved {model_name} for {prop_name} to {model_path}")
+                    logger.info(f"Also saved production version to {production_path}")
                     
                     # Add to trained models
                     prop_models[model_name] = model

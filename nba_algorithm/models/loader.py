@@ -31,19 +31,19 @@ def load_model_from_file(model_path: str) -> Optional[Any]:
         model_path: Path to the model file
         
     Returns:
-        Loaded model or None if loading failed
+        Loaded model object or None if loading fails
     """
+    if not os.path.exists(model_path):
+        logger.error(f"Model file does not exist: {model_path}")
+        return None
+        
     try:
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
         logger.info(f"Successfully loaded model from {model_path}")
         return model
-    except (FileNotFoundError, pickle.PickleError, EOFError, AttributeError) as e:
-        logger.error(f"Failed to load model from {model_path}: {str(e)}")
-        logger.error(traceback.format_exc())
-        return None
     except Exception as e:
-        logger.error(f"Unexpected error loading model from {model_path}: {str(e)}")
+        logger.error(f"Error loading model from {model_path}: {str(e)}")
         logger.error(traceback.format_exc())
         return None
 
@@ -58,10 +58,9 @@ def load_models() -> Dict[str, Any]:
     """
     models = {}
     model_files = {
-        "spread": "spread_model.pkl",
-        "moneyline": "moneyline_model.pkl",
-        "total": "total_model.pkl",
-        "ensemble": "ensemble_model.pkl"
+        "gradient_boosting": "production_gradient_boosting.pkl",
+        "random_forest": "production_random_forest.pkl",
+        "ensemble": "EnsembleStacking_20250417_134933_v1.pkl"  # Use the most recent ensemble model
     }
     
     for model_type, filename in model_files.items():
