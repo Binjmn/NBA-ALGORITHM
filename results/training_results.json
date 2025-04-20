@@ -1,0 +1,78 @@
+{
+  "models_trained": [
+    "player_player_points_gradient_boosting",
+    "player_player_points_random_forest",
+    "player_player_rebounds_gradient_boosting",
+    "player_player_rebounds_random_forest",
+    "player_player_assists_gradient_boosting",
+    "player_player_assists_random_forest",
+    "player_player_threes_gradient_boosting",
+    "player_player_threes_random_forest",
+    "player_player_steals_gradient_boosting",
+    "player_player_steals_random_forest",
+    "player_player_blocks_gradient_boosting",
+    "player_player_blocks_random_forest"
+  ],
+  "targets_processed": [],
+  "metrics": {
+    "data_collection": {
+      "api_requests": 5,
+      "api_errors": 0,
+      "games_collected": 400,
+      "games_with_stats": 0,
+      "games_with_odds": 0,
+      "teams_collected": 0,
+      "active_teams": 0,
+      "processing_time": 4.797120571136475,
+      "seasons_collected": 4
+    },
+    "feature_engineering": {
+      "features_created": 400,
+      "advanced_features": 1,
+      "missing_values_handled": 0,
+      "outliers_removed": 0,
+      "features_selected": 0,
+      "processing_time": 0
+    },
+    "model_training": {},
+    "evaluation": {},
+    "pipeline": {
+      "start_time": "2025-04-19T18:58:16.325157",
+      "total_time_seconds": 391.0526041984558,
+      "models_trained": 12,
+      "errors": 0,
+      "end_time": "2025-04-19T19:04:47.375244",
+      "total_time_formatted": "0h 6m 31s"
+    },
+    "player_props": {
+      "player_data_collected": 13089,
+      "player_features_created": 50,
+      "player_models_trained": 12,
+      "errors": 0
+    }
+  },
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "evaluation": {
+    "timestamp": "2025-04-19T19:04:47.368732",
+    "models_evaluated": 0,
+    "successful_evaluations": 0,
+    "evaluation_errors": 0,
+    "model_results": {},
+    "best_models": {}
+  },
+  "status": "success",
+  "training_details": {
+    "feature_count": 0,
+    "total_samples": 400,
+    "system_info": {
+      "python_version": "3.13.1",
+      "platform": "Windows-11-10.0.22631-SP0",
+      "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    }
+  }
+}

@@ -48,11 +48,18 @@ class ResultsManager:
             config: Configuration dictionary with model storage settings
         """
         self.config = config
-        self.models_dir = config['paths']['models_dir']
-        self.results_dir = config['paths']['results_dir']
-        self.production_dir = config['paths']['production_dir']
-        self.backup_enabled = config['results'].get('backup_enabled', True)
-        self.backup_dir = config['paths'].get('backup_dir', os.path.join(self.results_dir, 'backups'))
+        
+        # Get paths with defaults
+        paths = config.get('paths', {})
+        current_dir = os.getcwd()
+        self.models_dir = paths.get('models_dir', os.path.join(current_dir, 'results', 'models'))
+        self.results_dir = paths.get('results_dir', os.path.join(current_dir, 'results'))
+        self.production_dir = paths.get('production_dir', os.path.join(current_dir, 'results', 'production'))
+        
+        # Get results settings with defaults
+        results_config = config.get('results', {})
+        self.backup_enabled = results_config.get('backup_enabled', True)
+        self.backup_dir = paths.get('backup_dir', os.path.join(self.results_dir, 'backups'))
         
         # Initialize metrics and results tracking
         self.metrics = {

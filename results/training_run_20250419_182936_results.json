@@ -1,0 +1,64 @@
+{
+  "models_trained": [],
+  "start_time": "2025-04-19T18:29:28.341305",
+  "metrics": {
+    "data_collection": {
+      "api_requests": 5,
+      "api_errors": 0,
+      "games_collected": 400,
+      "games_with_stats": 0,
+      "games_with_odds": 0,
+      "teams_collected": 0,
+      "active_teams": 0,
+      "processing_time": 3.7628822326660156,
+      "seasons_collected": 4
+    },
+    "feature_engineering": {
+      "features_created": 400,
+      "advanced_features": 1,
+      "missing_values_handled": 0,
+      "outliers_removed": 0,
+      "features_selected": 0,
+      "processing_time": 0
+    },
+    "model_training": {},
+    "evaluation": {},
+    "pipeline": {
+      "start_time": "2025-04-19T18:29:28.341634",
+      "total_time_seconds": 0,
+      "models_trained": 0,
+      "errors": 0
+    }
+  },
+  "config": {},
+  "feature_importance": {},
+  "targets_processed": [],
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "evaluation": {
+    "timestamp": "2025-04-19T18:29:36.598564",
+    "models_evaluated": 0,
+    "successful_evaluations": 0,
+    "evaluation_errors": 0,
+    "model_results": {},
+    "best_models": {}
+  },
+  "status": "success",
+  "training_details": {
+    "feature_count": 0,
+    "total_samples": 400,
+    "system_info": {
+      "python_version": "3.13.1",
+      "platform": "Windows-11-10.0.22631-SP0",
+      "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    }
+  },
+  "end_time": "2025-04-19T18:29:36.599263",
+  "run_id": "training_run_20250419_182936",
+  "duration_seconds": 8.257958,
+  "duration_formatted": "0:00:08.257958"
+}

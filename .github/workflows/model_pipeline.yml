@@ -75,11 +75,12 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
-    - name: Train models
+    - name: Train NBA Models
       run: |
-        python -m src.Model_training_pipeline.pipeline
+        python run_training_pipeline.py
       env:
-        API_KEY: ${{ secrets.NBA_API_KEY }}
+        BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
+        THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
     
     - name: Archive model artifacts
       uses: actions/upload-artifact@v2
@@ -137,6 +138,8 @@ jobs:
       run: |
         # This could trigger a lambda function or update an ECS service
         curl -X POST "https://api.example.com/update-models" \
-          -H "Authorization: Bearer ${{ secrets.SERVICE_API_KEY }}" \
+          -H "Authorization: Bearer ${SERVICE_API_KEY}" \
           -H "Content-Type: application/json" \
           -d '{"environment": "${{ github.event.inputs.environment }}", "version": "${{ github.sha }}"}'
+      env:
+        SERVICE_API_KEY: ${{ secrets.SERVICE_API_KEY }}

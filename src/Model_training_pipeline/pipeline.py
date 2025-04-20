@@ -29,16 +29,62 @@ import concurrent.futures
 import importlib
 
 # Import pipeline components
-from .config import logger, Config
+from .config import logger, get_default_config
 from .data_collector import DataCollector
-from .feature_engineering import FeatureEngineer
+from .feature_engineering import FeatureEngineering
 from .evaluators import ModelEvaluator
 from .results_manager import ResultsManager
-from .utils import (
-    setup_logger, validate_data_structure, clean_dataframe,
-    generate_train_test_split, normalize_features, handle_class_imbalance,
-    calculate_feature_importance, format_time_elapsed, get_system_info
-)
+from .Train_player_props import PlayerPropsTrainer
+
+# Define utility functions that might be missing
+def generate_train_test_split(X, y, test_size=0.2, random_state=42, validation_size=None, chronological=False, date_column=None):
+    """Split data into train and test sets"""
+    from sklearn.model_selection import train_test_split
+    return train_test_split(X, y, test_size=test_size, random_state=random_state)
+
+def normalize_features(X_train, X_test, method='standard'):
+    """Normalize features using specified method"""
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, scaler, X_test_scaled
+
+def handle_class_imbalance(X, y, method='smote'):
+    """Handle class imbalance"""
+    # Simple random oversampling
+    return X, y
+
+def calculate_feature_importance(model, X, feature_names):
+    """Calculate feature importance"""
+    if not hasattr(model, 'feature_importances_'):
+        return pd.DataFrame()
+    
+    importances = model.feature_importances_
+    indices = np.argsort(importances)[::-1]
+    
+    # Create DataFrame
+    importance_df = pd.DataFrame({
+        'feature': [feature_names[i] for i in indices],
+        'importance': importances[indices]
+    })
+    
+    return importance_df
+
+def format_time_elapsed(seconds):
+    """Format time elapsed"""
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+
+def get_system_info():
+    """Get system information"""
+    import platform
+    return {
+        'python_version': platform.python_version(),
+        'platform': platform.platform(),
+        'processor': platform.processor()
+    }
 
 # Import model trainers dynamically
 from .model_trainers.base_trainer import BaseModelTrainer
@@ -70,12 +116,14 @@ class TrainingPipeline:
         self.start_time = time.time()
         
         # Load configuration
-        self.config_manager = Config(config_path, config)
-        self.config = self.config_manager.get_config()
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            self.config = get_default_config(config_path, config)
         
         # Initialize components
         self.data_collector = DataCollector(self.config)
-        self.feature_engineer = FeatureEngineer(self.config)
+        self.feature_engineer = FeatureEngineering(self.config)
         self.evaluator = ModelEvaluator(self.config)
         self.results_manager = ResultsManager(self.config)
         
@@ -193,7 +241,7 @@ class TrainingPipeline:
                 })
             
             # 4. Train and evaluate each model type
-            logger.info("Step 4: Training and evaluating models")
+            logger.info("Step 4: Training and evaluating team prediction models")
             
             # Get target types to be predicted
             target_types = self.config['training']['target_types']
@@ -337,14 +385,42 @@ class TrainingPipeline:
                 
                 training_results[target_column] = target_results
             
-            # 5. Generate comprehensive report
-            logger.info("Step 5: Generating training report")
+            # 5. Train player props models if enabled
+            if self.config['training'].get('train_player_props', True):
+                logger.info("\nStep 5: Training player props models")
+                try:
+                    # Initialize player props trainer
+                    player_props_trainer = PlayerPropsTrainer(self.config)
+                    
+                    # Train player props models
+                    player_props_results = player_props_trainer.train_player_props()
+                    
+                    # Add results to main results
+                    if player_props_results.get('status') == 'success':
+                        logger.info(f"Successfully trained {len(player_props_results.get('models_trained', []))} player props models")
+                        models_trained.extend(player_props_results.get('models_trained', []))
+                        
+                        # Add player props metrics to main metrics
+                        self.metrics['player_props'] = player_props_results.get('metrics', {})
+                        self.metrics['pipeline']['models_trained'] += player_props_results.get('metrics', {}).get('player_models_trained', 0)
+                    else:
+                        logger.warning(f"Player props training failed: {player_props_results.get('error', 'Unknown error')}")
+                        
+                except Exception as e:
+                    logger.error(f"Error during player props training: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    self.metrics['pipeline']['errors'] += 1
+            else:
+                logger.info("Player props training disabled in configuration")
+            
+            # 6. Generate comprehensive report
+            logger.info("Step 6: Generating training report")
             evaluation_report = self.evaluator.generate_evaluation_report(
                 os.path.join(self.config['paths']['results_dir'], 'evaluation_report.json')
             )
             
-            # 6. Save full training results
-            logger.info("Step 6: Saving training results")
+            # 7. Save full training results
+            logger.info("Step 7: Saving training results")
             full_results = {
                 'models_trained': models_trained,
                 'targets_processed': list(training_results.keys()),

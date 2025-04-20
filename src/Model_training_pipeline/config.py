@@ -18,6 +18,8 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
+import json
+import traceback
 
 # Configure logging
 logging.basicConfig(
@@ -69,11 +71,13 @@ def get_current_season() -> str:
             return str(now.year)
 
 
-def get_default_config(season: Optional[str] = None) -> Dict[str, Any]:
+def get_default_config(config_path: Optional[str] = None, config: Optional[Dict[str, Any]] = None, season: Optional[str] = None) -> Dict[str, Any]:
     """
     Get default configuration for the training pipeline
     
     Args:
+        config_path: Path to a JSON configuration file
+        config: Configuration dictionary (overrides config_path if provided)
         season: NBA season to train models for (e.g., "2025" for 2024-2025 season)
                If None, automatically detects the current season
     
@@ -83,147 +87,158 @@ def get_default_config(season: Optional[str] = None) -> Dict[str, Any]:
     if season is None:
         season = get_current_season()
     
-    DEFAULT_CONFIG = {
+    # Start with base config
+    default_config = {
+        'paths': {
+            'data_dir': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data'),
+            'results_dir': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'results'),
+            'models_dir': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'results', 'models'),
+            'logs_dir': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+        },
         'data_collection': {
+            'num_seasons': 4,
+            'min_games_required': 100,
             'api': {
                 'base_url': 'https://www.balldontlie.io/api/v1',
-                'key': None,  # API key if required
-                'timeout': 10,  # Request timeout in seconds
-                'max_retries': 3,  # Max retry attempts for failed requests
-                'retry_delay': 2.0  # Delay between retries in seconds
+                'timeout': 10,
+                'key': os.environ.get('NBA_API_KEY', '')
             },
-            'num_seasons': 4,              # Number of seasons to collect
-            'min_games_required': 100,     # Minimum games required for training
-            'team_filter': 'active_nba',   # Filter type ('all', 'active_nba', 'custom')
-            'pagination_size': 100,        # API pagination size
-            'max_pages_per_season': 25,    # Maximum pages to request per season
-            'request_delay': 0.5,          # Delay between API requests in seconds
-            'retry_count': 3,              # Number of retries for failed requests
-            'filter_active_teams': True,   # Whether to filter for active teams only
-            'force_current_season': False  # Whether to force inclusion of current season
+            'retry_count': 3,
+            'retry_delay': 2.0,
+            'force_current_season': True,
+            'enable_logging': True,
+            'filter_active_teams': True
         },
         'feature_engineering': {
-            'window_size': 10,  # Window size for rolling averages
-            'use_advanced_features': True,  # Whether to use advanced statistical features
-            'home_advantage': 3.0,  # Home court advantage factor
-            'normalize_features': True,  # Whether to normalize features
-            'normalization_method': 'standard',  # Normalization method ('standard', 'minmax', 'robust')
-            'handle_missing_values': True,  # Whether to handle missing values
-            'missing_value_strategy': 'mean',  # Strategy for missing values ('mean', 'median', 'zero')
-            'drop_missing_threshold': 0.5  # Drop columns with more than this fraction of missing values
+            'enable_advanced_features': True,
+            'normalize_features': True,
+            'normalization_method': 'standard',  # 'standard', 'minmax', 'robust'
+            'handle_missing_values': 'mean',  # 'mean', 'median', 'mode', 'zero'
+            'outlier_removal': False,
+            'outlier_method': 'iqr',  # 'iqr', 'zscore'
+            'feature_selection': False,
+            'feature_selection_method': 'importance',  # 'importance', 'correlation'
+            'home_advantage': 3.0  # Average home advantage in points
         },
         'training': {
-            'test_size': 0.2,  # Fraction of data to use for testing
-            'validation_size': 0.1,  # Fraction of data to use for validation
-            'random_state': 42,  # Random seed for reproducibility
-            'handle_imbalance': True,  # Whether to handle class imbalance
-            'imbalance_method': 'smote',  # Method for handling imbalance
-            'use_cross_validation': True,  # Whether to use cross-validation
-            'cv_folds': 5,  # Number of cross-validation folds
+            'train_player_props': True,  # Enable player props training
             'target_types': [
-                {
-                    'name': 'Moneyline',
-                    'column': 'home_win',
-                    'type': 'classification'
-                },
-                {
-                    'name': 'Spread',
-                    'column': 'spread',
-                    'type': 'regression'
-                },
-                {
-                    'name': 'Total',
-                    'column': 'total',
-                    'type': 'regression'
-                }
+                {'name': 'moneyline', 'column': 'home_win', 'type': 'classification'},
+                {'name': 'spread', 'column': 'spread_diff', 'type': 'regression'},
+                {'name': 'totals', 'column': 'total_points', 'type': 'regression'}
+            ],
+            'models': ['random_forest', 'gradient_boosting', 'ensemble'],
+            'test_size': 0.2,
+            'validation_size': 0.1,
+            'random_state': 42,
+            'handle_imbalance': True,
+            'imbalance_method': 'smote',  # 'smote', 'adasyn', 'random_over', 'random_under'
+            'player_feature_columns': [
+                # Player stats
+                'player_min', 'player_fgm', 'player_fga', 'player_fg_pct', 'player_ftm', 
+                'player_fta', 'player_ft_pct', 'player_tpm', 'player_tpa', 'player_tp_pct',
+                # Player context
+                'player_season_avg_pts', 'player_season_avg_reb', 'player_season_avg_ast',
+                'player_season_avg_min', 'player_last5_avg_pts', 'player_last5_avg_reb',
+                'player_last5_avg_ast', 'player_last5_avg_min',
+                # Team context
+                'team_pace', 'opponent_defensive_rating', 'team_offensive_rating',
+                'days_rest', 'is_home_game', 'opponent_position_defense'
             ]
         },
         'models': {
             'random_forest': {
-                'enabled': True,
-                'trainer_module': 'random_forest_trainer',
-                'trainer_class': 'RandomForestTrainer',
                 'params': {
                     'n_estimators': 100,
                     'max_depth': 20,
                     'min_samples_split': 10,
                     'random_state': 42
-                }
+                },
+                'optimize_hyperparams': False,
+                'tuning_method': 'random',  # 'grid', 'random'
+                'cv_folds': 5,
+                'n_iter': 10  # For random search
             },
             'gradient_boosting': {
-                'enabled': True,
-                'trainer_module': 'gradient_boosting_trainer',
-                'trainer_class': 'GradientBoostingTrainer',
                 'params': {
-                    'n_estimators': 100, 
+                    'n_estimators': 100,
                     'learning_rate': 0.1,
-                    'max_depth': 5,
+                    'max_depth': 3,
+                    'subsample': 1.0,
                     'random_state': 42
-                }
+                },
+                'optimize_hyperparams': False,
+                'tuning_method': 'random',  # 'grid', 'random'
+                'cv_folds': 5,
+                'n_iter': 10  # For random search
             },
-            'stacking_ensemble': {
-                'enabled': True,
-                'trainer_module': 'ensemble_trainer',
-                'trainer_class': 'StackingEnsembleTrainer',
-                'base_models': ['random_forest', 'gradient_boosting'],
-                'meta_model': 'logistic_regression',
-                'params': {
-                    'cv': 5,
+            'ensemble': {
+                'ensemble_method': 'stacking',  # 'stacking', 'voting'
+                'weights': None,  # For voting ensemble
+                'rf_params': {
+                    'n_estimators': 100,
+                    'max_depth': 20,
                     'random_state': 42
-                }
-            },
-            'bayesian': {
-                'enabled': True,
-                'trainer_module': 'bayesian_trainer',
-                'trainer_class': 'BayesianTrainer',
-                'params': {
-                    'alpha': 1.0, 
+                },
+                'gb_params': {
+                    'n_estimators': 100,
+                    'learning_rate': 0.1,
+                    'max_depth': 3,
                     'random_state': 42
-                }
+                },
+                'final_estimator_params': {},  # For stacking ensemble
+                'cv_folds': 5
             }
         },
         'evaluation': {
-            'metrics': ['accuracy', 'precision', 'recall', 'f1', 'roc_auc', 'rmse', 'mae', 'r2'],
-            'baseline_strategy': 'majority',  # Strategy for baseline model ('majority', 'stratified')
-            'threshold': 0.5,  # Classification threshold
-            'primary_metric': 'f1',  # Primary metric for model comparison
-            'production_threshold': 0.7  # Threshold for promoting to production
+            'metrics': {
+                'classification': ['accuracy', 'precision', 'recall', 'f1', 'roc_auc'],
+                'regression': ['mse', 'rmse', 'mae', 'r2', 'mape']
+            },
+            'primary_metric': 'f1',  # For classification
+            'primary_metric_regression': 'rmse',  # For regression
+            'threshold': 0.5,  # For binary classification
+            'production_threshold': 0.75  # Minimum primary metric value for production models
         },
         'results': {
-            'save_models': True,  # Whether to save trained models
-            'save_predictions': True,  # Whether to save predictions
-            'save_feature_importance': True,  # Whether to save feature importance
-            'backup_enabled': True,  # Whether to create backups
-            'prepare_production_models': True  # Whether to prepare production models
+            'save_models': True,
+            'save_evaluation': True,
+            'save_predictions': True,
+            'prepare_production_models': True,
+            'check_backward_compatibility': True,
+            'model_format': 'pickle'  # 'pickle', 'joblib', 'onnx'
         },
         'logging': {
-            'level': 'INFO',  # Logging level
-            'to_console': True,  # Whether to log to console
-            'to_file': True,  # Whether to log to file
-            'file_path': 'logs/training_pipeline.log',  # Path to log file
-            'rotation': '1 day',  # Log rotation interval
-            'retention': '30 days'  # Log retention period
-        },
-        'paths': {
-            'models_dir': 'models',  # Directory for trained models
-            'results_dir': 'results',  # Directory for training results
-            'production_dir': 'models/production',  # Directory for production models
-            'data_dir': 'data',  # Directory for collected data
-            'output_dir': 'output',  # Directory for outputs
-            'backup_dir': 'results/backups'  # Directory for backups
+            'level': 'INFO',  # 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+            'file': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs', 'training.log'),
+            'console': True
         }
     }
     
+    # Load config from file if provided
+    if config_path:
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load config from file: {str(e)}")
+            config = None
+    
+    # Override default config with provided config
+    if config:
+        default_config.update(config)
+    
     return {
         'season': season,
-        'data_collection': DEFAULT_CONFIG['data_collection'],
-        'feature_engineering': DEFAULT_CONFIG['feature_engineering'],
-        'training': DEFAULT_CONFIG['training'],
-        'models': DEFAULT_CONFIG['models'],
-        'evaluation': DEFAULT_CONFIG['evaluation'],
-        'results': DEFAULT_CONFIG['results'],
-        'logging': DEFAULT_CONFIG['logging'],
-        'paths': DEFAULT_CONFIG['paths']
+        'data_collection': default_config['data_collection'],
+        'feature_engineering': default_config['feature_engineering'],
+        'training': default_config['training'],
+        'models': default_config['models'],
+        'evaluation': default_config['evaluation'],
+        'results': default_config['results'],
+        'logging': default_config['logging'],
+        'paths': default_config['paths']
     }
 
 

@@ -51,10 +51,22 @@ class ModelEvaluator:
             config: Configuration dictionary with evaluation settings
         """
         self.config = config
-        self.evaluation_metrics = config['evaluation']['metrics']
-        self.baseline_strategy = config['evaluation']['baseline_strategy']
-        self.threshold = config['evaluation'].get('threshold', 0.5)
-        self.output_dir = config['paths']['output_dir']
+        
+        # Get evaluation config with defaults
+        eval_config = config.get('evaluation', {})
+        
+        # Set default values if keys are missing
+        self.evaluation_metrics = eval_config.get('metrics', {
+            'classification': ['accuracy', 'precision', 'recall', 'f1', 'roc_auc'],
+            'regression': ['mse', 'rmse', 'mae', 'r2']
+        })
+        self.baseline_strategy = eval_config.get('baseline_strategy', 'mean')
+        self.threshold = eval_config.get('threshold', 0.5)
+        
+        # Get paths
+        paths = config.get('paths', {})
+        self.output_dir = paths.get('results_dir', os.path.join(os.getcwd(), 'results'))
+        
         self.evaluation_results = {}
         
         # Initialize metrics tracking

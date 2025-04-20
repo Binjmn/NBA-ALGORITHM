@@ -1,0 +1,780 @@
+{
+  "timestamp": "2025-04-19T19:04:47.348014",
+  "models_evaluated": 12,
+  "successful_evaluations": 12,
+  "evaluation_errors": 0,
+  "model_results": {
+    "player_player_points_gradient_boosting": {
+      "model_name": "player_player_points_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:41.294063",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 2.40634792862985,
+        "rmse": 1.5512407706832134,
+        "mae": 0.8790108106392504,
+        "r2": 0.9674773679473717
+      },
+      "residuals": {
+        "mean": 0.009454663114507994,
+        "std": 1.551211957785022,
+        "min": -6.584133258960833,
+        "max": 13.810195276012173
+      },
+      "feature_importance": [
+        {
+          "feature": "player_fgm",
+          "importance": 0.9378175767614155
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.03523728428866547
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.013340245688939172
+        },
+        {
+          "feature": "player_min",
+          "importance": 0.013045454659643458
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.0005098949421673042
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 4.954365916905693e-05
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_points_random_forest": {
+      "model_name": "player_player_points_random_forest",
+      "timestamp": "2025-04-19T19:04:41.978963",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 2.5720015937637473,
+        "rmse": 1.603746112626231,
+        "mae": 0.9001646030100613,
+        "r2": 0.965238500851213
+      },
+      "residuals": {
+        "mean": -0.038423843126834785,
+        "std": 1.603285751836868,
+        "min": -6.588277493748091,
+        "max": 13.79505929326092
+      },
+      "feature_importance": [
+        {
+          "feature": "player_fgm",
+          "importance": 0.9716034098838021
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.008335968108433777
+        },
+        {
+          "feature": "player_min",
+          "importance": 0.007719087678252695
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.0058243056167136854
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.005608344220421969
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0009088844923757202
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_rebounds_gradient_boosting": {
+      "model_name": "player_player_rebounds_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:42.448306",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 4.268903753000475,
+        "rmse": 2.0661325593970186,
+        "mae": 1.229546693526996,
+        "r2": 0.6230078744700362
+      },
+      "residuals": {
+        "mean": -0.04704553605872647,
+        "std": 2.065596879968941,
+        "min": -9.20784936019678,
+        "max": 12.777119238347021
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.7772875181837097
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.09663026033691602
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.060283467240409803
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.05591137461448754
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.009488215117976167
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0003991645065007224
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_rebounds_random_forest": {
+      "model_name": "player_player_rebounds_random_forest",
+      "timestamp": "2025-04-19T19:04:43.224360",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 4.660218373072875,
+        "rmse": 2.158753893586037,
+        "mae": 1.2925997771396867,
+        "r2": 0.5884504004889572
+      },
+      "residuals": {
+        "mean": -0.06518622842666365,
+        "std": 2.1577694799714777,
+        "min": -9.147239041359391,
+        "max": 12.372461745040304
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.7184621819287372
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.10415490062627075
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.08118491597613842
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.05759521721766584
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.025557939679459393
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.013044844571728446
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_assists_gradient_boosting": {
+      "model_name": "player_player_assists_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:43.643410",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 2.6812034621789245,
+        "rmse": 1.6374380788838778,
+        "mae": 0.950877534601564,
+        "r2": 0.4717783316337135
+      },
+      "residuals": {
+        "mean": -0.06352554469097853,
+        "std": 1.6362053561062069,
+        "min": -5.85047870166294,
+        "max": 12.26121403743035
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.8447979577714831
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.12094133797359818
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.014392636316869462
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.01141058339388878
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.006666815637640434
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0017906689065198976
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_assists_random_forest": {
+      "model_name": "player_player_assists_random_forest",
+      "timestamp": "2025-04-19T19:04:44.343593",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 2.8658207241509843,
+        "rmse": 1.692873510972094,
+        "mae": 0.9685051179501806,
+        "r2": 0.43540703810687054
+      },
+      "residuals": {
+        "mean": -0.0940781884960126,
+        "std": 1.690257382353437,
+        "min": -7.360120943899579,
+        "max": 12.976843916489425
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.6660494193336551
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.12711742546924676
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.07313616544752342
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.07150103091603845
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.0451791297865759
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.01701682904696034
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_threes_gradient_boosting": {
+      "model_name": "player_player_threes_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:44.728485",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 2.7237121007065286e-05,
+        "rmse": 0.005218919524869615,
+        "mae": 0.00012760192040745918,
+        "r2": 0.999984071738051
+      },
+      "residuals": {
+        "mean": -0.00010236241400701439,
+        "std": 0.0052179155745626935,
+        "min": -0.26702180600991987,
+        "max": 0.0006576888546936388
+      },
+      "feature_importance": [
+        {
+          "feature": "player_tpm",
+          "importance": 0.9999880416679706
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 1.1958034340408348e-05
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 2.9768377694108013e-10
+        },
+        {
+          "feature": "player_fga",
+          "importance": 2.8993928194660617e-15
+        },
+        {
+          "feature": "player_min",
+          "importance": 2.349100387078497e-15
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_threes_random_forest": {
+      "model_name": "player_player_threes_random_forest",
+      "timestamp": "2025-04-19T19:04:44.990047",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 0.0002231858242416571,
+        "rmse": 0.014939405083257402,
+        "mae": 0.000697014828995568,
+        "r2": 0.9998694809825572
+      },
+      "residuals": {
+        "mean": -0.0002971319782963636,
+        "std": 0.014936449940636188,
+        "min": -0.26426763414902865,
+        "max": 0.5234466515652585
+      },
+      "feature_importance": [
+        {
+          "feature": "player_tpm",
+          "importance": 0.9999889002813421
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 1.1099718657966778e-05
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_defensive_rating",
+          "importance": 0.0
+        },
+        {
+          "feature": "team_pace",
+          "importance": 0.0
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "team_offensive_rating",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_steals_gradient_boosting": {
+      "model_name": "player_player_steals_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:45.400716",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 0.5277987308699309,
+        "rmse": 0.7264975780206916,
+        "mae": 0.4405370666754579,
+        "r2": 0.2715926393795143
+      },
+      "residuals": {
+        "mean": 0.000783475535903165,
+        "std": 0.7264971555594801,
+        "min": -2.311349086169998,
+        "max": 6.002270436411283
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.9108913150928795
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.030030670019561334
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.023498092915718204
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.0211371905993635
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.012922174742315388
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0015205566301622231
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_steals_random_forest": {
+      "model_name": "player_player_steals_random_forest",
+      "timestamp": "2025-04-19T19:04:46.122541",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 0.5579710542797814,
+        "rmse": 0.7469746008264146,
+        "mae": 0.45719238216456953,
+        "r2": 0.22995225418470222
+      },
+      "residuals": {
+        "mean": -0.016552729632363664,
+        "std": 0.7467911765825164,
+        "min": -2.3276571277879317,
+        "max": 5.938313936802791
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.5440636558050284
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.14629957349592174
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.11247553329309452
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.11081770324341216
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.05873056169294478
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.027612972469598582
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_blocks_gradient_boosting": {
+      "model_name": "player_player_blocks_gradient_boosting",
+      "timestamp": "2025-04-19T19:04:46.563504",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 0.42638575851546834,
+        "rmse": 0.652982203827538,
+        "mae": 0.3790475750652542,
+        "r2": 0.19339829292276667
+      },
+      "residuals": {
+        "mean": -0.005902801206147725,
+        "std": 0.6529555233347745,
+        "min": -2.0175010640153044,
+        "max": 5.592526076342905
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.7152091476655357
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.159126256525406
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.060531921399473616
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.04481953050023261
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.014581767701405055
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.0057313762079470925
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    },
+    "player_player_blocks_random_forest": {
+      "model_name": "player_player_blocks_random_forest",
+      "timestamp": "2025-04-19T19:04:47.306522",
+      "prediction_type": "regression",
+      "test_samples": 2618,
+      "metrics": {
+        "mse": 0.4556796745605809,
+        "rmse": 0.6750404984595968,
+        "mae": 0.3879526099101798,
+        "r2": 0.13798245827755828
+      },
+      "residuals": {
+        "mean": -0.028055158560917812,
+        "std": 0.6744572504159938,
+        "min": -2.5116609333760875,
+        "max": 5.835368797868798
+      },
+      "feature_importance": [
+        {
+          "feature": "player_min",
+          "importance": 0.4662654443179543
+        },
+        {
+          "feature": "player_fga",
+          "importance": 0.17580386456777258
+        },
+        {
+          "feature": "player_fgm",
+          "importance": 0.1338146700333287
+        },
+        {
+          "feature": "player_tpa",
+          "importance": 0.12936181934826918
+        },
+        {
+          "feature": "player_tpm",
+          "importance": 0.06116577150173856
+        },
+        {
+          "feature": "is_home_game",
+          "importance": 0.033588430230936536
+        },
+        {
+          "feature": "days_rest",
+          "importance": 0.0
+        },
+        {
+          "feature": "opponent_position_defense",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_ast",
+          "importance": 0.0
+        },
+        {
+          "feature": "player_last5_avg_min",
+          "importance": 0.0
+        }
+      ],
+      "baseline_comparison": {
+        "error": "cannot access local variable 'baseline_pred' where it is not associated with a value",
+        "status": "failed"
+      }
+    }
+  },
+  "best_models": {
+    "regression": "player_player_threes_gradient_boosting",
+    "regression_score": 0.005218919524869615
+  }
+}

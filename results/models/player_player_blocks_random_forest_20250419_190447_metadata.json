@@ -1,0 +1,20 @@
+{
+  "model_name": "player_player_blocks_random_forest",
+  "timestamp": "2025-04-19T19:04:47.290484",
+  "version": "1.0.0",
+  "is_production": false,
+  "file_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_random_forest_20250419_190447.pkl",
+  "target": "player_blocks",
+  "prediction_type": "regression",
+  "training_samples": 10471,
+  "feature_count": 24,
+  "training_time": 0.7209968566894531,
+  "training_time_formatted": "0h 0m 0s",
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "model_type": "random_forest"
+}
