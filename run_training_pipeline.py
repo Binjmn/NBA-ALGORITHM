@@ -56,8 +56,11 @@ def main():
         ]
         
         for directory in required_dirs:
-            os.makedirs(directory, exist_ok=True)
-            logger.info(f"Ensured directory exists: {directory}")
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                logger.info(f"Created directory: {directory}")
+            else:
+                logger.info(f"Directory already exists: {directory}")
         
         # Create a default configuration with required values
         config = {
@@ -86,8 +89,11 @@ def main():
             },
             'training': {
                 'train_player_props': True,
+                'train_game_outcomes': True,  # Explicitly enable game outcome models
                 'test_size': 0.2,
                 'random_state': 42,
+                'handle_imbalance': True,
+                'imbalance_method': 'smote',
                 'models': ['gradient_boosting', 'random_forest'],
                 'target_types': [
                     {'name': 'moneyline', 'column': 'home_win', 'type': 'classification'},
@@ -98,7 +104,9 @@ def main():
                     {'name': 'points', 'column': 'player_pts', 'type': 'regression'},
                     {'name': 'rebounds', 'column': 'player_reb', 'type': 'regression'},
                     {'name': 'assists', 'column': 'player_ast', 'type': 'regression'},
-                    {'name': 'threes', 'column': 'player_fg3m', 'type': 'regression'}
+                    {'name': 'threes', 'column': 'player_fg3m', 'type': 'regression'},
+                    {'name': 'blocks', 'column': 'player_blk', 'type': 'regression'},
+                    {'name': 'steals', 'column': 'player_stl', 'type': 'regression'}
                 ]
             },
             'models': {
@@ -202,7 +210,8 @@ def main():
             'paths': {
                 'data_dir': os.path.join(current_dir, 'data'),
                 'results_dir': os.path.join(current_dir, 'results'),
-                'models_dir': os.path.join(current_dir, 'results', 'models')
+                'models_dir': os.path.join(current_dir, 'results', 'models'),
+                'production_dir': os.path.join(current_dir, 'results', 'production')
             },
             'logging': {
                 'level': 'INFO',
@@ -212,29 +221,56 @@ def main():
             }
         }
         
+        # Ensure model directories exist and are writable
+        model_dirs = [
+            config['paths']['models_dir'],
+            config['paths']['production_dir']
+        ]
+        
+        for directory in model_dirs:
+            try:
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+                    logger.info(f"Created model directory: {directory}")
+                # Test directory is writable by creating a temporary file
+                test_file = os.path.join(directory, '_test_write.txt')
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                logger.info(f"Verified model directory is writable: {directory}")
+            except Exception as e:
+                logger.error(f"Error creating or validating model directory {directory}: {str(e)}")
+                logger.error(traceback.format_exc())
+                return 1
+        
         # Initialize and run pipeline
         pipeline = TrainingPipeline(config=config)
-        results = pipeline.run()
+        pipeline_results = pipeline.run()
         
         # Log results
-        if results.get('status') == 'success':
+        if pipeline_results.get('status') == 'success':
             logger.info("Training pipeline completed successfully")
-            logger.info(f"Trained {len(results.get('models_trained', []))} models")
+            models_trained = pipeline_results.get('metrics', {}).get('pipeline', {}).get('models_trained', 0)
+            game_models = pipeline_results.get('metrics', {}).get('pipeline', {}).get('game_outcome_models_trained', 0)
+            player_models = pipeline_results.get('metrics', {}).get('pipeline', {}).get('player_props_models_trained', 0)
             
-            # Log player props training if enabled
-            if config['training'].get('train_player_props', True) and results.get('player_props_results'):
-                logger.info("Player props models trained successfully")
-                logger.info(f"Trained {len(results.get('player_props_results', {}).get('models_trained', []))} player prop models")
-            else:
-                logger.warning("No player prop models were trained")
+            logger.info(f"Trained {models_trained} models total")
+            
+            # Check for specific model types
+            if game_models == 0 and config['training'].get('train_game_outcomes', True):
+                logger.warning("No game outcome models were trained despite being enabled in config")
+            
+            # Only warn about player props if they're enabled but none were trained
+            if player_models == 0 and config['training'].get('train_player_props', True):
+                logger.warning("No player prop models were trained despite being enabled in config")
             
             # Save results to file
             with open('results/training_results.json', 'w') as f:
-                json.dump(results, f, indent=2)
+                json.dump(pipeline_results, f, indent=2)
                 
             logger.info(f"Results saved to results/training_results.json")
         else:
-            logger.error(f"Training pipeline failed: {results.get('error', 'Unknown error')}")
+            logger.error(f"Training pipeline failed: {pipeline_results.get('error', 'Unknown error')}")
     
     except Exception as e:
         logger.error(f"Unhandled exception in training pipeline: {str(e)}")

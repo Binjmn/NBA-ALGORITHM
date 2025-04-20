@@ -1,0 +1,908 @@
+{
+  "models_trained": [
+    "game_home_win_gradient_boosting",
+    "game_home_win_random_forest",
+    "game_spread_diff_gradient_boosting",
+    "game_spread_diff_random_forest",
+    "game_total_points_gradient_boosting",
+    "game_total_points_random_forest",
+    "player_player_points_gradient_boosting",
+    "player_player_points_random_forest",
+    "player_player_rebounds_gradient_boosting",
+    "player_player_rebounds_random_forest",
+    "player_player_assists_gradient_boosting",
+    "player_player_assists_random_forest",
+    "player_player_threes_gradient_boosting",
+    "player_player_threes_random_forest",
+    "player_player_steals_gradient_boosting",
+    "player_player_steals_random_forest",
+    "player_player_blocks_gradient_boosting",
+    "player_player_blocks_random_forest"
+  ],
+  "start_time": "2025-04-20T19:25:53.146557",
+  "metrics": {},
+  "config": {},
+  "feature_importance": {},
+  "models_details": {},
+  "game_outcome_models": 6,
+  "player_props_results": {
+    "models_trained": [
+      "player_player_points_gradient_boosting",
+      "player_player_points_random_forest",
+      "player_player_rebounds_gradient_boosting",
+      "player_player_rebounds_random_forest",
+      "player_player_assists_gradient_boosting",
+      "player_player_assists_random_forest",
+      "player_player_threes_gradient_boosting",
+      "player_player_threes_random_forest",
+      "player_player_steals_gradient_boosting",
+      "player_player_steals_random_forest",
+      "player_player_blocks_gradient_boosting",
+      "player_player_blocks_random_forest"
+    ],
+    "props_processed": [
+      "player_points",
+      "player_rebounds",
+      "player_assists",
+      "player_threes",
+      "player_steals",
+      "player_blocks"
+    ],
+    "metrics": {
+      "player_data_collected": 13092,
+      "player_features_created": 50,
+      "player_models_trained": 12,
+      "errors": 0
+    },
+    "seasons": [
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+    "evaluation": {
+      "timestamp": "2025-04-20T19:32:20.720725",
+      "models_evaluated": 12,
+      "successful_evaluations": 12,
+      "evaluation_errors": 0,
+      "model_results": {
+        "player_player_points_gradient_boosting": {
+          "model_name": "player_player_points_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:14.773122",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 2.428201863511866,
+            "rmse": 1.5582688675295628,
+            "mae": 0.8938417251893049,
+            "r2": 0.9657894237689124
+          },
+          "residuals": {
+            "mean": -0.004266608732208728,
+            "std": 1.5582630264373831,
+            "min": -8.06431506662048,
+            "max": 11.83568174171192
+          },
+          "feature_importance": [
+            {
+              "feature": "player_fgm",
+              "importance": 0.9437730151540593
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.028801732693185554
+            },
+            {
+              "feature": "player_min",
+              "importance": 0.013310821819099747
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.012679455180725734
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.0014056768333119884
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 2.9298319617676844e-05
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 71.43795341733487,
+            "rmse": 8.452097575000828,
+            "mae": 6.510882016036655,
+            "rmse_improvement": 6.893828707471265,
+            "relative_improvement": 4.424030314101413
+          }
+        },
+        "player_player_points_random_forest": {
+          "model_name": "player_player_points_random_forest",
+          "timestamp": "2025-04-20T19:32:15.443791",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 2.6706992098313647,
+            "rmse": 1.6342274045650331,
+            "mae": 0.9340744770085307,
+            "r2": 0.9623729145911699
+          },
+          "residuals": {
+            "mean": -0.0334690296499334,
+            "std": 1.6338846452199913,
+            "min": -8.021483501105003,
+            "max": 11.394726903986975
+          },
+          "feature_importance": [
+            {
+              "feature": "player_fgm",
+              "importance": 0.9717710158067063
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.008108502682058243
+            },
+            {
+              "feature": "player_min",
+              "importance": 0.007620399982009922
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.006096372097873382
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.005536183021986975
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.0008675264093651931
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 71.43795341733487,
+            "rmse": 8.452097575000828,
+            "mae": 6.510882016036655,
+            "rmse_improvement": 6.8178701704357945,
+            "relative_improvement": 4.171922555814955
+          }
+        },
+        "player_player_rebounds_gradient_boosting": {
+          "model_name": "player_player_rebounds_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:15.884907",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 4.54345434056361,
+            "rmse": 2.131538022312436,
+            "mae": 1.2956984067868658,
+            "r2": 0.6040040711059742
+          },
+          "residuals": {
+            "mean": 0.006469797897703682,
+            "std": 2.131528203491282,
+            "min": -10.893527491333888,
+            "max": 16.126234880595614
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.7804816518799454
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.09902889166991735
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.06621477071850129
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.0463415899774593
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.006833265309282258
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.0010998304448943735
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 12.005345551737305,
+            "rmse": 3.464873093164785,
+            "mae": 2.5307369224895,
+            "rmse_improvement": 1.3333350708523493,
+            "relative_improvement": 0.6255272281776412
+          }
+        },
+        "player_player_rebounds_random_forest": {
+          "model_name": "player_player_rebounds_random_forest",
+          "timestamp": "2025-04-20T19:32:16.606982",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 4.812872633307747,
+            "rmse": 2.193826026217154,
+            "mae": 1.3345702165457083,
+            "r2": 0.5805222576884276
+          },
+          "residuals": {
+            "mean": -0.013327182357137144,
+            "std": 2.1937855454711537,
+            "min": -9.292954484885602,
+            "max": 14.749804969540262
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.7197894642034718
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.10698062147064713
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.07456514242682129
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.06038958660894454
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.024877768797680565
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.013397416492434538
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 12.005345551737305,
+            "rmse": 3.464873093164785,
+            "mae": 2.5307369224895,
+            "rmse_improvement": 1.2710470669476313,
+            "relative_improvement": 0.5793745956872052
+          }
+        },
+        "player_player_assists_gradient_boosting": {
+          "model_name": "player_player_assists_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:17.029200",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 2.7281211257805107,
+            "rmse": 1.6517024931205107,
+            "mae": 0.9697343713018817,
+            "r2": 0.4745064920321024
+          },
+          "residuals": {
+            "mean": 0.0012509487687457478,
+            "std": 1.6517020194053431,
+            "min": -6.262414678757349,
+            "max": 11.12115236710422
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.8607585880959723
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.10431907426053726
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.01285362774435316
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.012363752876463066
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.007728762359896083
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.0019761946627782226
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 5.447880870561283,
+            "rmse": 2.334069594198357,
+            "mae": 1.5074455899198167,
+            "rmse_improvement": 0.6823671010778465,
+            "relative_improvement": 0.4131295459805666
+          }
+        },
+        "player_player_assists_random_forest": {
+          "model_name": "player_player_assists_random_forest",
+          "timestamp": "2025-04-20T19:32:17.738470",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 2.8682236612949383,
+            "rmse": 1.6935830836705172,
+            "mae": 0.9876610303285216,
+            "r2": 0.44751979698878386
+          },
+          "residuals": {
+            "mean": -0.026264443870387483,
+            "std": 1.6933794141547598,
+            "min": -6.901633878376526,
+            "max": 12.701765706515706
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.68177875983185
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.11032362269149619
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.0731797231293012
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.07192949459727035
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.045297148585130335
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.017491251164952017
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 5.447880870561283,
+            "rmse": 2.334069594198357,
+            "mae": 1.5074455899198167,
+            "rmse_improvement": 0.6404865105278399,
+            "relative_improvement": 0.3781842867370333
+          }
+        },
+        "player_player_threes_gradient_boosting": {
+          "model_name": "player_player_threes_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:18.120441",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.00038268899161721006,
+            "rmse": 0.01956243828404859,
+            "mae": 0.0004067605341858612,
+            "r2": 0.9997561025882636
+          },
+          "residuals": {
+            "mean": 0.0003803580662545217,
+            "std": 0.019558740229335965,
+            "min": -2.0616596158515244e-05,
+            "max": 1.0011283894923722
+          },
+          "feature_importance": [
+            {
+              "feature": "player_tpm",
+              "importance": 0.9999999999999922
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 3.304236696447072e-15
+            },
+            {
+              "feature": "player_min",
+              "importance": 3.219407695096959e-15
+            },
+            {
+              "feature": "player_fga",
+              "importance": 1.1960621005079708e-15
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 4.798619731416924e-17
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "team_offensive_rating",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 2.1149293623520427,
+            "rmse": 1.4542796712984896,
+            "mae": 0.738831615120275,
+            "rmse_improvement": 1.4347172330144409,
+            "relative_improvement": 73.34040942045164
+          }
+        },
+        "player_player_threes_random_forest": {
+          "model_name": "player_player_threes_random_forest",
+          "timestamp": "2025-04-20T19:32:18.351066",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.000904517496980861,
+            "rmse": 0.03007519737226775,
+            "mae": 0.0007408340223860174,
+            "r2": 0.9994235280313353
+          },
+          "residuals": {
+            "mean": 0.0004198210732119286,
+            "std": 0.030072267078611617,
+            "min": -0.14012215231448977,
+            "max": 1.5198778476855104
+          },
+          "feature_importance": [
+            {
+              "feature": "player_tpm",
+              "importance": 1.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_defensive_rating",
+              "importance": 0.0
+            },
+            {
+              "feature": "team_pace",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            },
+            {
+              "feature": "team_offensive_rating",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_reb",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 2.1149293623520427,
+            "rmse": 1.4542796712984896,
+            "mae": 0.738831615120275,
+            "rmse_improvement": 1.4242044739262218,
+            "relative_improvement": 47.354783953620085
+          }
+        },
+        "player_player_steals_gradient_boosting": {
+          "model_name": "player_player_steals_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:18.765924",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.5070941932412276,
+            "rmse": 0.7121054649707638,
+            "mae": 0.4456897631949147,
+            "r2": 0.24272414214580051
+          },
+          "residuals": {
+            "mean": -0.021077533494169177,
+            "std": 0.7117934607897363,
+            "min": -3.098133713572911,
+            "max": 6.975256279883859
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.9022236553371964
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.03872971509746594
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.029677490848876376
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.016217379711293792
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.009031519573790388
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.004120239431377137
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 0.8869797632684231,
+            "rmse": 0.9417960306077018,
+            "mae": 0.4662084765177549,
+            "rmse_improvement": 0.22969056563693802,
+            "relative_improvement": 0.3225513311379631
+          }
+        },
+        "player_player_steals_random_forest": {
+          "model_name": "player_player_steals_random_forest",
+          "timestamp": "2025-04-20T19:32:19.498689",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.5480263567379179,
+            "rmse": 0.7402880228248447,
+            "mae": 0.46236176556337133,
+            "r2": 0.1815975513882545
+          },
+          "residuals": {
+            "mean": -0.03517957382450379,
+            "std": 0.7394516578678042,
+            "min": -2.5638207601222303,
+            "max": 6.736323839355089
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.5542892724993229
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.13793475575527828
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.10926232834255759
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.10847860308639266
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.06107243212023462
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.02896260819621387
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 0.8869797632684231,
+            "rmse": 0.9417960306077018,
+            "mae": 0.4662084765177549,
+            "rmse_improvement": 0.20150800778285705,
+            "relative_improvement": 0.2722021720869239
+          }
+        },
+        "player_player_blocks_gradient_boosting": {
+          "model_name": "player_player_blocks_gradient_boosting",
+          "timestamp": "2025-04-20T19:32:19.945166",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.3751789462799358,
+            "rmse": 0.612518527295245,
+            "mae": 0.37391708347478064,
+            "r2": 0.1623512390381212
+          },
+          "residuals": {
+            "mean": -0.034014540520728935,
+            "std": 0.6115733458164273,
+            "min": -2.0003762335853414,
+            "max": 5.1526670915941875
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.7334107318412776
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.14339651494968966
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.058614022442014455
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.03819210642071112
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.014197980595378851
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.012188643750928263
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 0.5318823978617793,
+            "rmse": 0.729302679181819,
+            "mae": 0.2898052691867125,
+            "rmse_improvement": 0.11678415188657398,
+            "relative_improvement": 0.19066223580577812
+          }
+        },
+        "player_player_blocks_random_forest": {
+          "model_name": "player_player_blocks_random_forest",
+          "timestamp": "2025-04-20T19:32:20.682749",
+          "prediction_type": "regression",
+          "test_samples": 2619,
+          "metrics": {
+            "mse": 0.4043901487623895,
+            "rmse": 0.6359167781733625,
+            "mae": 0.38159063318784275,
+            "r2": 0.09713242063625693
+          },
+          "residuals": {
+            "mean": -0.051790415752881444,
+            "std": 0.6338043085989028,
+            "min": -2.6834087538708298,
+            "max": 5.184367562992563
+          },
+          "feature_importance": [
+            {
+              "feature": "player_min",
+              "importance": 0.4649577217987744
+            },
+            {
+              "feature": "player_fga",
+              "importance": 0.17849122158711694
+            },
+            {
+              "feature": "player_fgm",
+              "importance": 0.1326935595719459
+            },
+            {
+              "feature": "player_tpa",
+              "importance": 0.13236084578547172
+            },
+            {
+              "feature": "player_tpm",
+              "importance": 0.05853445302776322
+            },
+            {
+              "feature": "is_home_game",
+              "importance": 0.03296219822892776
+            },
+            {
+              "feature": "days_rest",
+              "importance": 0.0
+            },
+            {
+              "feature": "opponent_position_defense",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_ast",
+              "importance": 0.0
+            },
+            {
+              "feature": "player_last5_avg_min",
+              "importance": 0.0
+            }
+          ],
+          "baseline_comparison": {
+            "mse": 0.5318823978617793,
+            "rmse": 0.729302679181819,
+            "mae": 0.2898052691867125,
+            "rmse_improvement": 0.09338590100845656,
+            "relative_improvement": 0.1468523936051862
+          }
+        }
+      },
+      "best_models": {
+        "regression": "player_player_threes_gradient_boosting",
+        "regression_score": 0.01956243828404859
+      }
+    },
+    "status": "success",
+    "training_details": {
+      "feature_count": 50,
+      "total_samples": 13092,
+      "models_trained": 12
+    }
+  },
+  "evaluation": {
+    "timestamp": "2025-04-20T19:32:20.741958",
+    "models_evaluated": 0,
+    "successful_evaluations": 0,
+    "evaluation_errors": 0,
+    "model_results": {},
+    "best_models": {}
+  },
+  "status": "success",
+  "training_details": {
+    "feature_count": 0,
+    "total_samples": 400,
+    "system_info": {
+      "python_version": "3.13.1",
+      "platform": "Windows-11-10.0.22631-SP0",
+      "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    }
+  },
+  "end_time": "2025-04-20T19:32:20.742291",
+  "run_id": "training_run_20250420_193220",
+  "duration_seconds": 387.595734,
+  "duration_formatted": "0:06:27.595734"
+}

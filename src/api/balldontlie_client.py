@@ -155,45 +155,100 @@ class BallDontLieClient(BaseAPIClient):
         
         return self.request('player_injuries', params=params)
     
-    def get_games(self, 
-                  start_date: Optional[Union[str, datetime]] = None,
-                  end_date: Optional[Union[str, datetime]] = None,
-                  team_ids: Optional[List[int]] = None,
-                  page: int = 1, 
-                  per_page: int = 100) -> Dict[str, Any]:
+    def get_games(self, season: Optional[int] = None, team_ids: Optional[List[int]] = None, max_games: int = 100) -> List[Dict]:
         """
-        Get games information
+        Retrieve games from the API with optional filtering
         
         Args:
-            start_date (Optional[Union[str, datetime]]): Start date for filtering games (YYYY-MM-DD)
-            end_date (Optional[Union[str, datetime]]): End date for filtering games (YYYY-MM-DD)
-            team_ids (Optional[List[int]]): Team IDs to filter by
-            page (int): Page number for pagination
-            per_page (int): Number of items per page
+            season: Optional season to filter by (e.g. 2021)
+            team_ids: Optional list of team IDs to filter by
+            max_games: Maximum number of games to retrieve
             
         Returns:
-            Dict[str, Any]: Games information
+            List of games matching the criteria
         """
+        logger.info(f"Retrieving games from BallDontLie API")
+        
+        all_games = []
+        page = 1
+        per_page = 100
+        total_pages = 1  # Will be updated after first request
+        
+        # Set up parameters for the API request
         params = {
-            'page': page,
-            'per_page': per_page
+            'per_page': per_page,
+            'page': page
         }
         
-        # Convert datetime to string if needed
-        if start_date:
-            if isinstance(start_date, datetime):
-                start_date = start_date.strftime('%Y-%m-%d')
-            params['start_date'] = start_date
-        
-        if end_date:
-            if isinstance(end_date, datetime):
-                end_date = end_date.strftime('%Y-%m-%d')
-            params['end_date'] = end_date
+        if season:
+            params['seasons[]'] = season
         
         if team_ids:
-            params['team_ids'] = ','.join(str(team_id) for team_id in team_ids)
+            if isinstance(team_ids, list):
+                params['team_ids[]'] = team_ids
+            else:
+                params['team_ids[]'] = [team_ids]
+                
+        # Add date range to get completed games
+        if season:
+            start_date = f"{season}-10-01"
+            end_date = f"{season+1}-06-30"
+            params['start_date'] = start_date
+            params['end_date'] = end_date
         
-        return self.request('games', params=params)
+        try:
+            while page <= total_pages and len(all_games) < max_games:
+                params['page'] = page
+                
+                logger.info(f"Making API request to: {self.base_url}/games")
+                response = self.request('games', params=params)
+                
+                if not response or 'data' not in response:
+                    logger.error(f"Invalid response from API for games")
+                    break
+                
+                games = response['data']
+                logger.info(f"Retrieved {len(games)} games for season {season}, page {page}")
+                
+                # Filter to only include games with scores (completed games)
+                completed_games = [game for game in games if 
+                                  'status' in game and 
+                                  game.get('status') == 'Final' and 
+                                  'home_team_score' in game and 
+                                  'visitor_team_score' in game and
+                                  game.get('home_team_score') is not None and
+                                  game.get('visitor_team_score') is not None]
+                
+                logger.info(f"Filtered to {len(completed_games)} completed games with scores")
+                
+                # Update field names to match our expected format
+                for game in completed_games:
+                    # Rename score fields if necessary
+                    if 'home_team_score' in game and 'home_score' not in game:
+                        game['home_score'] = game['home_team_score']
+                    if 'visitor_team_score' in game and 'visitor_score' not in game:
+                        game['visitor_score'] = game['visitor_team_score']
+                
+                all_games.extend(completed_games)
+                
+                # Update total pages from response
+                if 'meta' in response and 'total_pages' in response['meta']:
+                    total_pages = response['meta']['total_pages']
+                
+                # Move to next page
+                page += 1
+                
+                # Add rate limiting
+                if page <= total_pages and len(all_games) < max_games:
+                    time.sleep(1.0)  # Simple rate limiting - 1 request per second
+            
+            logger.info(f"Successfully retrieved {len(all_games)} games")
+            
+        except Exception as e:
+            logger.error(f"Error retrieving games: {str(e)}")
+            logger.error(traceback.format_exc())
+        
+        return all_games[:max_games]
     
     def get_stats(self, 
                  game_id: Optional[int] = None,

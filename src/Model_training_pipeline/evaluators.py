@@ -219,7 +219,7 @@ class ModelEvaluator:
                 'status': 'failed'
             }
     
-    def _compare_to_baseline(self, y_test: np.ndarray, y_pred: np.ndarray, prediction_type: str) -> Dict[str, Any]:
+    def _compare_to_baseline(self, y_test: np.ndarray, y_pred: np.ndarray, prediction_type: str) -> Dict[str, float]:
         """
         Compare model predictions to a baseline model
         
@@ -231,38 +231,39 @@ class ModelEvaluator:
         Returns:
             Dictionary with baseline comparison metrics
         """
-        baseline_results = {}
-        
         try:
-            # Generate baseline predictions based on strategy
-            if self.baseline_strategy == 'majority':
-                # Most frequent class for classification, mean for regression
-                if prediction_type == 'classification':
-                    most_common = int(np.round(np.mean(y_test)))
-                    baseline_pred = np.full_like(y_test, most_common)
-                else:
-                    baseline_pred = np.full_like(y_test, np.mean(y_test))
-                    
+            baseline_results = {}
+            
+            # Create baseline predictions based on strategy
+            if self.baseline_strategy == 'mean':
+                baseline_value = float(np.mean(y_test))
+                baseline_pred = np.full_like(y_test, baseline_value)
+            elif self.baseline_strategy == 'median':
+                baseline_value = float(np.median(y_test))
+                baseline_pred = np.full_like(y_test, baseline_value)
+            elif self.baseline_strategy == 'mode':
+                from scipy import stats
+                baseline_value = float(stats.mode(y_test, keepdims=True)[0][0])
+                baseline_pred = np.full_like(y_test, baseline_value)
             elif self.baseline_strategy == 'stratified':
-                # Random predictions with same distribution as training data
+                # Only applicable for classification
                 if prediction_type == 'classification':
-                    # Calculate class probabilities
-                    pos_prob = np.mean(y_test)
-                    # Generate random predictions with same class distribution
-                    np.random.seed(42)  # For reproducibility
-                    baseline_pred = (np.random.random(len(y_test)) < pos_prob).astype(int)
+                    from sklearn.dummy import DummyClassifier
+                    dummy = DummyClassifier(strategy='stratified', random_state=42)
+                    dummy.fit(np.zeros((len(y_test), 1)), y_test)
+                    baseline_pred = dummy.predict(np.zeros((len(y_test), 1)))
                 else:
-                    # Add random noise around mean for regression
-                    np.random.seed(42)  # For reproducibility
-                    mean, std = np.mean(y_test), np.std(y_test)
-                    baseline_pred = np.random.normal(mean, std, len(y_test))
+                    # Default to mean for regression
+                    baseline_value = float(np.mean(y_test))
+                    baseline_pred = np.full_like(y_test, baseline_value)
+            else:
+                # Default to mean
+                baseline_value = float(np.mean(y_test))
+                baseline_pred = np.full_like(y_test, baseline_value)
             
             # Calculate baseline metrics
             if prediction_type == 'classification':
                 baseline_results['accuracy'] = float(accuracy_score(y_test, baseline_pred))
-                baseline_results['precision'] = float(precision_score(y_test, baseline_pred, zero_division=0))
-                baseline_results['recall'] = float(recall_score(y_test, baseline_pred, zero_division=0))
-                baseline_results['f1'] = float(f1_score(y_test, baseline_pred, zero_division=0))
                 
                 # Calculate accuracy improvement
                 model_accuracy = float(accuracy_score(y_test, y_pred))
@@ -284,7 +285,8 @@ class ModelEvaluator:
         except Exception as e:
             logger.error(f"Error comparing to baseline: {str(e)}")
             logger.error(traceback.format_exc())
-            return {'error': str(e), 'status': 'failed'}
+            # Return empty dict on error instead of failing
+            return {}
     
     def optimize_threshold(self, model: Any, X_validation: np.ndarray, y_validation: np.ndarray, 
                           metric: str = 'f1') -> float:

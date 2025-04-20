@@ -1,0 +1,20 @@
+{
+  "model_name": "player_player_rebounds_random_forest",
+  "timestamp": "2025-04-20T16:47:20.105838",
+  "version": "1.0.0",
+  "is_production": false,
+  "file_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_random_forest_20250420_164720.pkl",
+  "target": "player_rebounds",
+  "prediction_type": "regression",
+  "training_samples": 10473,
+  "feature_count": 24,
+  "training_time": 0.684870719909668,
+  "training_time_formatted": "0h 0m 0s",
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "model_type": "random_forest"
+}

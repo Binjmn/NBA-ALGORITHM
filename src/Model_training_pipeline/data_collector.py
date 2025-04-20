@@ -62,45 +62,51 @@ class DataCollector:
             config: Configuration dictionary with data collection settings
         """
         self.config = config
-        self.collector = HistoricalDataCollectorAdapter()
-        
-        # Access configuration with proper structure and fallbacks
-        self.base_url = config['data_collection']['api']['base_url']
-        
-        # Use the correctly named environment variables
-        self.api_key = config['data_collection']['api'].get('key', os.environ.get('BALLDONTLIE_API_KEY', ''))
-        self.odds_api_key = config['data_collection']['api'].get('odds_key', os.environ.get('THE_ODDS_API_KEY', ''))
-        
         self.season = config.get('season', datetime.now().year)
         
-        # Set default values if keys are missing
-        data_config = config['data_collection']
-        self.days_back = data_config.get('days_back', 365)
-        self.include_stats = data_config.get('include_stats', True)
-        self.include_odds = data_config.get('include_odds', True)
-        self.filter_active_teams = data_config.get('filter_active_teams', True)
-        self.use_real_data_only = data_config.get('use_real_data_only', True)
-        self.min_games_required = data_config.get('min_games_required', 100)
+        # Get API configuration
+        api_config = config.get('data_collection', {}).get('api', {})
+        self.base_url = api_config.get('base_url', 'https://api.balldontlie.io/v1')
+        self.timeout = api_config.get('timeout', 10)
+        self.api_key = api_config.get('key', os.environ.get('BALLDONTLIE_API_KEY', ''))
+        self.odds_api_key = api_config.get('odds_key', os.environ.get('THE_ODDS_API_KEY', ''))
         
-        # Initialize team mapping
+        # Create BallDontLie client - it uses the API key from environment variables
+        from src.api.balldontlie_client import BallDontLieClient
+        # Set the API key in environment if provided in config
+        if self.api_key:
+            os.environ['BALLDONTLIE_API_KEY'] = self.api_key
+        self.balldontlie_client = BallDontLieClient()
+        
+        # Collection settings
+        data_collection = config.get('data_collection', {})
+        self.days_back = data_collection.get('days_back', 365)
+        self.include_stats = data_collection.get('include_stats', True)
+        self.include_odds = data_collection.get('include_odds', True)
+        self.filter_active_teams = data_collection.get('filter_active_teams', True)
+        self.use_real_data_only = data_collection.get('use_real_data_only', True)
+        self.min_games_required = data_collection.get('min_games_required', 100)
+        self.max_games_per_season = data_collection.get('max_games_per_season', 100)
+        
+        # Team mapping for name lookups
         self.team_mapping = {}
+        self.active_team_ids = []
         
-        # Initialize metrics
+        # Initialize metrics tracking
         self.metrics = {
+            'seasons_collected': 0,
+            'games_collected': 0,
+            'teams_collected': 0,
             'api_requests': 0,
             'api_errors': 0,
-            'games_collected': 0,
-            'games_with_stats': 0,
-            'games_with_odds': 0,
-            'teams_collected': 0,
-            'active_teams': 0,
-            'processing_time': 0,
-            'seasons_collected': 0
+            'processing_time': 0
         }
         
-        logger.info(f"Initialized DataCollector for {self.season} season with {self.days_back} days of history")
-        if self.filter_active_teams:
-            logger.info("Active NBA team filtering is enabled")
+        # Log configuration summary
+        logger.info(f"Initialized DataCollector for season {self.season} with API URL: {self.base_url}")
+        if self.api_key:
+            masked_key = self.api_key[:6] + '...' + self.api_key[-4:] if len(self.api_key) > 10 else '*****'
+            logger.info(f"Using API key (masked): {masked_key}")
         if self.use_real_data_only:
             logger.info("Using real data only (no synthetic data)")
     
@@ -125,6 +131,8 @@ class DataCollector:
                 seasons = list(range(current_season - num_seasons + 1, current_season + 1))
                 logger.info(f"Auto-detected seasons to collect: {seasons}")
             
+            logger.info(f"Collecting historical NBA data for seasons: {seasons}")
+            
             # Get teams data and build the mapping dictionary
             teams_data = self._get_teams()
             if not teams_data:
@@ -143,6 +151,8 @@ class DataCollector:
             
             # Collect games for each season
             all_games = []
+            total_games = 0
+            
             for season in seasons:
                 logger.info(f"Collecting games for season {season}")
                 season_games = self._get_games_for_season(season)
@@ -152,8 +162,10 @@ class DataCollector:
                     filtered_games = [g for g in season_games if self._is_game_between_active_teams(g)]
                     logger.info(f"Retrieved {len(filtered_games)} games between active teams for season {season}")
                     all_games.extend(filtered_games)
+                    total_games += len(filtered_games)
                 else:
                     all_games.extend(season_games if season_games else [])
+                    total_games += len(season_games) if season_games else 0
             
             # Check if we have enough games
             if len(all_games) < self.min_games_required:
@@ -168,6 +180,15 @@ class DataCollector:
             if all_games:
                 logger.info(f"Successfully collected {len(all_games)} games across {len(seasons)} seasons")
                 enriched_games = self._enrich_games_with_data(all_games)
+                
+                # Log sample of enriched game data with target values
+                if enriched_games:
+                    sample_game = enriched_games[0]
+                    target_values = {
+                        key: sample_game.get(key, 'missing') 
+                        for key in ['home_win', 'spread_diff', 'total_points']
+                    }
+                    logger.info(f"Sample target values after enrichment: {target_values}")
                 
                 # Update metrics
                 self.metrics['games_collected'] = len(enriched_games)
@@ -307,58 +328,24 @@ class DataCollector:
 
     def _get_games_for_season(self, season: int) -> List[Dict[str, Any]]:
         """
-        Get games for a specific season with pagination
+        Get games for a specific season using the BallDontLie API
         
         Args:
-            season: NBA season year (e.g., 2023 for 2022-2023 season)
+            season: Season year (e.g., 2021 for 2021-22 season)
             
         Returns:
             List of games for the season
         """
-        games = []
-        page = 1
-        per_page = self.config['data_collection'].get('pagination_size', 100)
-        max_pages = self.config['data_collection'].get('max_pages_per_season', 25)
-        
-        while page <= max_pages:
-            try:
-                # Make API request
-                url = f"{self.base_url}/games?seasons[]={season}&page={page}&per_page={per_page}"
-                response = self._make_api_request(url)
-                self.metrics['api_requests'] += 1
-                
-                if not response or 'data' not in response:
-                    logger.error(f"Invalid response for season {season}, page {page}")
-                    break
-                
-                # Extract games
-                page_games = response['data']
-                if not page_games:
-                    # No more games for this season
-                    break
-                    
-                games.extend(page_games)
-                logger.info(f"Retrieved {len(page_games)} games for season {season}, page {page}")
-                
-                # Check if we've reached the last page
-                meta = response.get('meta', {})
-                total_pages = meta.get('total_pages', 0)
-                if page >= total_pages:
-                    break
-                
-                # Increment page for next request
-                page += 1
-                
-                # Add delay between requests to avoid rate limiting
-                time.sleep(self.config['data_collection'].get('request_delay', 0.5))
-                
-            except Exception as e:
-                logger.error(f"Error fetching games for season {season}, page {page}: {str(e)}")
-                logger.error(traceback.format_exc())
-                self.metrics['api_errors'] += 1
-                break
-        
-        return games
+        try:
+            # Use the updated BallDontLie client to get games with scores
+            max_games = self.config['data_collection'].get('max_games_per_season', 100)
+            games = self.balldontlie_client.get_games(season=season, max_games=max_games)
+            logger.info(f"Retrieved {len(games)} filtered games for season {season}")
+            return games
+        except Exception as e:
+            logger.error(f"Error retrieving games for season {season}: {str(e)}")
+            logger.error(traceback.format_exc())
+            return []
 
     def _filter_active_nba_teams(self, teams_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -418,9 +405,17 @@ class DataCollector:
             List of enriched game data dictionaries
         """
         enriched_games = []
+        games_processed = 0
+        games_with_targets = 0
         
         for game in games:
             try:
+                # Only process games with scores (completed games)
+                if 'home_score' not in game or 'visitor_score' not in game:
+                    # Skip games without scores (future games or incomplete data)
+                    logger.debug(f"Skipping game without scores: {game.get('id', 'unknown')}")
+                    continue
+                    
                 # Extract team information - handle both API response formats
                 # Standard BallDontLie API format has nested 'home_team' and 'visitor_team' objects
                 if 'home_team' in game and isinstance(game['home_team'], dict):
@@ -447,11 +442,48 @@ class DataCollector:
                     game['home_team_id'] = home_team_id
                 if 'visitor_team_id' not in game and visitor_team_id is not None:
                     game['visitor_team_id'] = visitor_team_id
-                    
+                
+                # Add target values for prediction models - we must have scores to calculate these
+                home_score = int(game.get('home_score', 0))
+                visitor_score = int(game.get('visitor_score', 0))
+                
+                # Add home_win flag (1 if home team won, 0 if lost)
+                game['home_win'] = 1 if home_score > visitor_score else 0
+                
+                # Add point spread (regression - home team margin)
+                game['spread_diff'] = home_score - visitor_score
+                
+                # Add total points (regression - total game score)
+                game['total_points'] = home_score + visitor_score
+                
+                # Track games with targets
+                games_with_targets += 1
+                
+                # Process complete, add to enriched games
                 enriched_games.append(game)
+                games_processed += 1
+                
+                # Log sample of processed games
+                if games_processed % 100 == 0:
+                    logger.info(f"Processed {games_processed} games")
+                    
             except Exception as e:
                 logger.error(f"Error enriching game data: {str(e)}")
                 logger.debug(f"Game data: {game}")
+        
+        # Log summary
+        logger.info(f"Enriched {games_processed} out of {len(games)} total games")
+        logger.info(f"Added target values to {games_with_targets} games")
+        
+        # Log sample of a processed game with target values
+        if enriched_games:
+            sample = enriched_games[0]
+            target_sample = {
+                'home_win': sample.get('home_win', 'missing'),
+                'spread_diff': sample.get('spread_diff', 'missing'),
+                'total_points': sample.get('total_points', 'missing')
+            }
+            logger.info(f"Sample game targets: {target_sample}")
         
         return enriched_games
 

@@ -75,12 +75,18 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
-    - name: Train NBA Models
-      run: |
-        python run_training_pipeline.py
+    - name: Run model training pipeline
       env:
-        BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
-        THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        # Using proper GitHub Actions secrets syntax with explicit type conversion
+        BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY || '' }}
+        THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY || '' }}
+      run: |
+        # Verify environment variables are available
+        echo "Checking API key configuration before running training pipeline"
+        if [ -n "$BALLDONTLIE_API_KEY" ]; then echo "BallDontLie API key is configured"; else echo "WARNING: BallDontLie API key is not set"; fi
+        if [ -n "$THE_ODDS_API_KEY" ]; then echo "The Odds API key is configured"; else echo "WARNING: The Odds API key is not set"; fi
+        
+        python run_training_pipeline.py
     
     - name: Archive model artifacts
       uses: actions/upload-artifact@v2

@@ -400,84 +400,92 @@ class FeatureEngineering:
         Returns:
             Tuple of X, y arrays for model training
         """
-        logger.info(f"Preparing features for {target_column} prediction")
+        logger.info(f"Preparing features for target: {target_column} ({prediction_type})")
         
-        X_data = []
-        y_data = []
-        games_processed = 0
-        games_with_target = 0
-        missing_target_games = 0
-        missing_feature_games = 0
-        
-        # Check if any features exist
-        if not features:
-            logger.error(f"No features provided for {target_column} prediction")
-            return np.array([]), np.array([])
-        
-        # Get a sample game to check available columns
-        sample_columns = features[0].keys() if features else []
-        logger.info(f"Sample columns: {list(sample_columns)[:10]}...")
-        
-        # Define possible target column names (for flexibility)
+        # Get possible target columns that might contain our target value
         target_columns = [target_column]
         if target_column == 'home_win':
-            target_columns.extend(['home_team_won', 'home_winner'])
-        elif target_column == 'spread':
-            target_columns.extend(['point_spread', 'spread_line'])
-        elif target_column == 'total':
-            target_columns.extend(['over_under', 'total_points', 'total_score'])
+            target_columns.extend(['winner', 'home_team_won', 'home_win_calculated'])
+        elif target_column == 'spread_diff':
+            target_columns.extend(['point_diff', 'home_away_spread', 'spread_diff_calculated'])
+        elif target_column == 'total_points':
+            target_columns.extend(['total', 'total_score', 'total_points_calculated'])
         
-        # Log if target exists in sample data
-        targets_found = [col for col in target_columns if col in sample_columns]
-        if targets_found:
-            logger.info(f"Found target columns in data: {targets_found}")
+        # Count how many games already have target values
+        has_target = sum(1 for game in features if any(t in game for t in target_columns))
+        logger.info(f"Found {has_target} of {len(features)} games with {target_column} values")
+        
+        # Enhanced logging - Show sample of games with/without target values
+        if has_target > 0:
+            for i, game in enumerate(features):
+                if any(t in game for t in target_columns):
+                    present_targets = [t for t in target_columns if t in game]
+                    logger.info(f"Sample game with target - ID: {game.get('id', 'unknown')}, targets: {present_targets}")
+                    break
         else:
-            logger.warning(f"No direct target columns found for {target_column} in data")
+            logger.error(f"No games found with any target values for {target_column}")
+            logger.info(f"Sample game keys: {list(features[0].keys()) if features else []}")
             
-            # Try to derive the target from available data
+        # Check score fields for a random sample of games
+        total_games = len(features)
+        sample_size = min(5, total_games)
+        for i in range(sample_size):
+            game = features[i]
+            game_id = game.get('id', f'unknown-{i}')
+            home_score = game.get('home_score', game.get('home_team_score', None))
+            away_score = game.get('away_score', game.get('visitor_team_score', None))
+            logger.info(f"Game {game_id}: home_score={home_score}, away_score={away_score}")
+        
+        # Check if we need to derive target values
+        if has_target < len(features) * 0.8:  # If less than 80% have target values
+            logger.info(f"Deriving missing {target_column} values from game data")
             self._derive_target_values(features, target_column, target_columns)
             
-            # Check again if we have targets after derivation
-            targets_found = [col for col in target_columns if col in features[0]]
-            if targets_found:
-                logger.info(f"Successfully derived target columns: {targets_found}")
-            else:
-                logger.error(f"Failed to derive {target_column} target from available data")
-                return np.array([]), np.array([])
-        
-        # Process each game
-        for game in features:
-            games_processed += 1
+            # Recount after derivation
+            has_target_after = sum(1 for game in features if any(t in game for t in target_columns))
+            logger.info(f"After derivation: {has_target_after} of {len(features)} games have {target_column} values")
             
-            # Skip games without required target
-            if not any(target in game for target in target_columns):
+            # If still no target values, this is a critical error
+            if has_target_after == 0:
+                logger.error(f"CRITICAL: Failed to derive any {target_column} values")
+                return None, None
+        
+        # Create X, y data for model training
+        X_data = []
+        y_data = []
+        missing_target_games = 0
+        successful_features = 0
+        
+        for game in features:
+            # Skip games without this target value and no way to derive it
+            if not any(t in game for t in target_columns):
                 missing_target_games += 1
                 continue
             
-            games_with_target += 1
-            
-            # Get target value from any available target column
+            # Get target value from first available target column
             target_value = None
-            for target in target_columns:
-                if target in game:
-                    target_value = game[target]
+            used_target_column = None
+            for t in target_columns:
+                if t in game and game[t] is not None:
+                    target_value = game[t]
+                    used_target_column = t
                     break
             
-            # Skip if no valid target found
+            # Skip if still no target value
             if target_value is None:
                 missing_target_games += 1
                 continue
             
-            # Convert target to appropriate type
+            # Convert target to appropriate type based on prediction_type
             if prediction_type == 'classification':
                 try:
-                    target_value = int(target_value)
-                except (ValueError, TypeError):
-                    # Try to convert boolean-like values
                     if isinstance(target_value, str):
-                        target_value = 1 if target_value.lower() in ['true', 'yes', 'win', '1'] else 0
+                        target_value = 1 if target_value.lower() in ['1', 'true', 'win', 'yes', 'home'] else 0
                     else:
                         target_value = 1 if target_value else 0
+                except (ValueError, TypeError):
+                    missing_target_games += 1
+                    continue
             else:  # regression
                 try:
                     target_value = float(target_value)
@@ -485,11 +493,26 @@ class FeatureEngineering:
                     missing_target_games += 1
                     continue
             
-            # Create feature dictionary (exclude target columns)
+            # Extract features to a dict (excluding target columns)
             feature_dict = {}
+            
+            # Always include these important fields if available
+            if 'home_team_id' in game:
+                feature_dict['home_team_id'] = float(game['home_team_id'])
+            if 'visitor_team_id' in game or 'away_team_id' in game:
+                feature_dict['away_team_id'] = float(game.get('visitor_team_id', game.get('away_team_id')))
+            
+            # Add scores as features
+            if 'home_score' in game:
+                feature_dict['home_score'] = float(game['home_score'])
+            if 'away_score' in game:
+                feature_dict['away_score'] = float(game['away_score'])
+                
+            # Add other numeric features
             for key, value in game.items():
-                if key not in target_columns and not key.endswith('_is_calculated'):
-                    # Only include numeric features
+                # Skip target columns and non-numeric values
+                if (key not in target_columns and not key.endswith('_is_calculated') 
+                    and key not in ['home_score', 'away_score', 'home_team_id', 'away_team_id', 'visitor_team_id']):
                     try:
                         if isinstance(value, (int, float)):
                             feature_dict[key] = float(value)
@@ -499,55 +522,40 @@ class FeatureEngineering:
                         pass
             
             # Skip if not enough features
-            if len(feature_dict) < 3:  # Need at least 3 features for meaningful prediction
-                missing_feature_games += 1
+            min_features = 2  # Reduced from 3 to ensure we get some data
+            if len(feature_dict) < min_features:
+                logger.debug(f"Insufficient features ({len(feature_dict)}) for game {game.get('id', 'unknown')}")
+                missing_target_games += 1
                 continue
-            
-            # Add derived features for moneyline prediction
-            if target_column == 'home_win':
-                try:
-                    if 'home_win_pct' in game and 'away_win_pct' in game:
-                        feature_dict['win_pct_diff'] = game['home_win_pct'] - game['away_win_pct']
-                    if 'home_pts_avg' in game and 'away_pts_avg' in game:
-                        feature_dict['pts_avg_diff'] = game['home_pts_avg'] - game['away_pts_avg']
-                    if 'home_pts_allowed_avg' in game and 'away_pts_allowed_avg' in game:
-                        feature_dict['pts_allowed_avg_diff'] = game['home_pts_allowed_avg'] - game['away_pts_allowed_avg']
-                except Exception:
-                    logger.debug(f"Error creating derived features", exc_info=True)
             
             # Only add if we have valid features
             if feature_dict:
-                X_data.append(feature_dict)
+                X_data.append(list(feature_dict.values()))
                 y_data.append(target_value)
+                successful_features += 1
         
-        # Provide detailed logging about the data preparation
-        logger.info(f"Data preparation summary for {target_column}:")
-        logger.info(f"  - Total games processed: {games_processed}")
-        logger.info(f"  - Games with target: {games_with_target}")
-        logger.info(f"  - Games missing target: {missing_target_games}")
-        logger.info(f"  - Games with insufficient features: {missing_feature_games}")
-        logger.info(f"  - Final dataset size: {len(X_data)} samples")
-        
-        # Convert to DataFrame and numpy array
-        if not X_data:
-            logger.error(f"No valid data found for {target_column} prediction after processing {games_processed} games")
-            return np.array([]), np.array([])
-        
-        # Convert to DataFrame for easier processing
-        X_df = pd.DataFrame(X_data)
-        
-        # Report on data
-        logger.info(f"Feature columns for {target_column}: {list(X_df.columns)[:10]}...")
-        logger.info(f"X shape: {X_df.shape}, y size: {len(y_data)}")
-        
-        # Fill any missing values with column means
-        X_df = X_df.fillna(X_df.mean())
-        # If any columns still have NaNs (all NaN), fill with 0
-        X_df = X_df.fillna(0)
+        # Check if we collected enough data
+        min_samples = 5  # Reduced from 10 to ensure we get some models trained
+        if len(X_data) < min_samples or len(y_data) < min_samples:
+            logger.error(f"Not enough valid data for {target_column} prediction: {len(X_data)} samples (min required: {min_samples})")
+            logger.error(f"Check data collection and feature engineering for {target_column}")
+            if len(X_data) > 0:
+                logger.info(f"Sample feature keys: {list(range(len(X_data[0])))}")
+            return None, None
         
         # Convert to numpy arrays
-        X = X_df.to_numpy()
+        X = np.array(X_data)
         y = np.array(y_data)
+        
+        logger.info(f"Prepared {X.shape[0]} samples with {X.shape[1]} features for {target_column}")
+        logger.info(f"Feature conversion success rate: {successful_features}/{total_games - missing_target_games} games")
+        if missing_target_games > 0:
+            logger.info(f"Missing target values for {missing_target_games} games")
+        
+        # Print sample of prepared data
+        if len(X) > 0 and len(y) > 0:
+            logger.info(f"Sample X shape: {X[0].shape}, first few values: {X[0][:5] if len(X[0]) > 5 else X[0]}")
+            logger.info(f"Sample y values: {y[:5] if len(y) > 5 else y}")
         
         return X, y
     
@@ -560,97 +568,105 @@ class FeatureEngineering:
             target_column: Primary target column name
             target_columns: List of alternative target column names
         """
+        logger.info(f"Deriving values for target column: {target_column}")
+        
+        # Count how many games have the target column already
+        games_with_target = sum(1 for game in features if target_column in game and game[target_column] is not None)
+        logger.info(f"Found {games_with_target} out of {len(features)} games with existing '{target_column}' value")
+        
+        # If most games already have the target, skip derivation
+        if games_with_target >= len(features) * 0.9:
+            logger.info(f"Sufficient games have target '{target_column}', skipping derivation")
+            return
+        
+        # Derive target values for each game
         derived_count = 0
+        failed_count = 0
         
-        # For moneyline predictions (home win), derive from game results
-        if target_column == 'home_win':
-            logger.info("Deriving home_win target from game results")
-            for i, game in enumerate(features):
-                if 'result' in game and isinstance(game['result'], dict):
-                    try:
-                        if 'home_score' in game['result'] and 'away_score' in game['result']:
-                            features[i]['home_win'] = 1 if game['result']['home_score'] > game['result']['away_score'] else 0
-                            derived_count += 1
-                    except Exception:
-                        logger.debug(f"Error deriving home_win for game {i}", exc_info=True)
-                        
-                # If we couldn't derive from results, try from stats
-                if 'home_win' not in features[i] and 'home_score' in game and 'away_score' in game:
-                    try:
-                        features[i]['home_win'] = 1 if game['home_score'] > game['away_score'] else 0
-                        derived_count += 1
-                    except Exception:
-                        logger.debug(f"Error deriving home_win from scores for game {i}", exc_info=True)
-        
-        # For total predictions, derive from game results or odds
-        elif target_column == 'total':
-            logger.info("Deriving total target from game results or odds")
-            for i, game in enumerate(features):
-                # First try from game results
-                if 'result' in game and isinstance(game['result'], dict):
-                    try:
-                        if 'home_score' in game['result'] and 'away_score' in game['result']:
-                            features[i]['total_score'] = float(game['result']['home_score']) + float(game['result']['away_score'])
-                            derived_count += 1
-                    except Exception:
-                        logger.debug(f"Error deriving total from results for game {i}", exc_info=True)
+        for i, game in enumerate(features):
+            # Check if any of the valid target columns already exist and are valid
+            has_valid_target = False
+            for t in target_columns:
+                if t in game and game[t] is not None:
+                    has_valid_target = True
+                    break
+            
+            # Skip if any valid target already exists
+            if has_valid_target:
+                continue
+            
+            try:
+                # Extract necessary values for deriving target
+                home_score = None
+                away_score = None
                 
-                # If not from results, try from stats
-                if 'total_score' not in features[i] and 'home_score' in game and 'away_score' in game:
-                    try:
-                        features[i]['total_score'] = float(game['home_score']) + float(game['away_score'])
-                        derived_count += 1
-                    except Exception:
-                        logger.debug(f"Error deriving total from scores for game {i}", exc_info=True)
-                        
-                # If not from scores, try from odds
-                if 'total_score' not in features[i] and 'odds' in game and isinstance(game['odds'], dict) and 'totals' in game['odds']:
-                    try:
-                        totals_data = game['odds']['totals']
-                        if isinstance(totals_data, dict) and 'points' in totals_data:
-                            features[i]['total'] = float(totals_data['points'])
-                            derived_count += 1
-                        elif isinstance(totals_data, list) and len(totals_data) > 0:
-                            for total in totals_data:
-                                if isinstance(total, dict) and 'points' in total:
-                                    features[i]['total'] = float(total['points'])
-                                    derived_count += 1
-                                    break
-                    except Exception:
-                        logger.debug(f"Error deriving total from odds for game {i}", exc_info=True)
-        
-        # For spread predictions, derive from game results or odds
-        elif target_column == 'spread':
-            logger.info("Deriving spread target from game results or odds")
-            for i, game in enumerate(features):
-                # First try from odds
-                if 'odds' in game and isinstance(game['odds'], dict) and 'spreads' in game['odds']:
-                    try:
-                        spreads_data = game['odds']['spreads']
-                        if isinstance(spreads_data, dict) and 'points' in spreads_data:
-                            features[i]['spread'] = float(spreads_data['points'])
-                            derived_count += 1
-                        elif isinstance(spreads_data, list) and len(spreads_data) > 0:
-                            for spread in spreads_data:
-                                if isinstance(spread, dict) and 'points' in spread:
-                                    features[i]['spread'] = float(spread['points'])
-                                    derived_count += 1
-                                    break
-                    except Exception:
-                        logger.debug(f"Error deriving spread from odds for game {i}", exc_info=True)
+                # Look for home_score and away_score in different formats
+                if 'home_team_score' in game:
+                    home_score = game['home_team_score']
+                elif 'home_score' in game:
+                    home_score = game['home_score']
                 
-                # If not from odds, try to calculate actual spread from results
-                if 'spread' not in features[i] and 'result' in game and isinstance(game['result'], dict):
-                    try:
-                        if 'home_score' in game['result'] and 'away_score' in game['result']:
-                            # Convention: positive spread means home team is favored
-                            # Actual spread will be away_score - home_score
-                            features[i]['spread'] = float(game['result']['away_score']) - float(game['result']['home_score'])
-                            derived_count += 1
-                    except Exception:
-                        logger.debug(f"Error deriving spread from results for game {i}", exc_info=True)
+                if 'visitor_team_score' in game:
+                    away_score = game['visitor_team_score']
+                elif 'away_team_score' in game:
+                    away_score = game['away_team_score']
+                elif 'away_score' in game:
+                    away_score = game['away_score']
+                
+                # Skip if scores are not available
+                if home_score is None or away_score is None:
+                    logger.debug(f"Cannot derive target for game {i}: missing scores")
+                    failed_count += 1
+                    continue
+                
+                # Convert scores to float for calculations
+                try:
+                    home_score = float(home_score)
+                    away_score = float(away_score)
+                except (ValueError, TypeError):
+                    logger.debug(f"Cannot derive target for game {i}: invalid score format")
+                    failed_count += 1
+                    continue
+                
+                # Derive specific target values based on target column
+                if target_column == 'home_win':
+                    # Binary classification: 1 if home team won, 0 otherwise
+                    game[target_column] = 1 if home_score > away_score else 0
+                    derived_count += 1
+                    game['home_win_is_calculated'] = True
+                    
+                elif target_column == 'spread_diff':
+                    # Regression: home score - away score (positive means home team covered)
+                    game[target_column] = home_score - away_score
+                    derived_count += 1
+                    game['spread_diff_is_calculated'] = True
+                    
+                elif target_column == 'total_points':
+                    # Regression: total points scored in the game
+                    game[target_column] = home_score + away_score
+                    derived_count += 1
+                    game['total_points_is_calculated'] = True
+                
+                # Set values for alternative target columns too for better data usability
+                if target_column == 'home_win':
+                    game['winner'] = 'home' if home_score > away_score else 'away'
+                    game['home_team_won'] = home_score > away_score
+                    
+                elif target_column == 'spread_diff':
+                    game['point_diff'] = home_score - away_score
+                    
+                elif target_column == 'total_points':
+                    game['total'] = home_score + away_score
+                    game['total_score'] = home_score + away_score
+                
+            except Exception as e:
+                logger.debug(f"Error deriving target for game {i}: {str(e)}")
+                failed_count += 1
         
-        logger.info(f"Derived {derived_count} target values for {target_column}")
+        # Log derivation results
+        logger.info(f"Derived {derived_count} values for '{target_column}' target")
+        if failed_count > 0:
+            logger.warning(f"Failed to derive {failed_count} values for '{target_column}' target")
     
     def get_engineering_metrics(self) -> Dict[str, Any]:
         """

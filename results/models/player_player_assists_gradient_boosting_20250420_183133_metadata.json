@@ -1,0 +1,20 @@
+{
+  "model_name": "player_player_assists_gradient_boosting",
+  "timestamp": "2025-04-20T18:31:33.330339",
+  "version": "1.0.0",
+  "is_production": false,
+  "file_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_gradient_boosting_20250420_183133.pkl",
+  "target": "player_assists",
+  "prediction_type": "regression",
+  "training_samples": 10473,
+  "feature_count": 24,
+  "training_time": 0.3140218257904053,
+  "training_time_formatted": "0h 0m 0s",
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "model_type": "gradient_boosting"
+}

@@ -1,0 +1,80 @@
+{
+  "models_trained": [
+    "player_player_points_gradient_boosting",
+    "player_player_points_random_forest",
+    "player_player_rebounds_gradient_boosting",
+    "player_player_rebounds_random_forest",
+    "player_player_assists_gradient_boosting",
+    "player_player_assists_random_forest",
+    "player_player_threes_gradient_boosting",
+    "player_player_threes_random_forest",
+    "player_player_steals_gradient_boosting",
+    "player_player_steals_random_forest",
+    "player_player_blocks_gradient_boosting",
+    "player_player_blocks_random_forest"
+  ],
+  "start_time": "2025-04-20T16:13:56.583382",
+  "metrics": {
+    "data_collection": {
+      "seasons_collected": 4,
+      "games_collected": 400,
+      "teams_collected": 0,
+      "api_requests": 1,
+      "api_errors": 0,
+      "processing_time": 4.325056552886963
+    },
+    "feature_engineering": {
+      "features_created": 400,
+      "advanced_features": 1,
+      "missing_values_handled": 0,
+      "outliers_removed": 0,
+      "features_selected": 0,
+      "processing_time": 0
+    },
+    "model_training": {},
+    "evaluation": {},
+    "pipeline": {
+      "start_time": "2025-04-20T16:13:56.583670",
+      "total_time_seconds": 0,
+      "models_trained": 12,
+      "errors": 0
+    },
+    "player_props": {
+      "player_data_collected": 13092,
+      "player_features_created": 50,
+      "player_models_trained": 12,
+      "errors": 0
+    }
+  },
+  "config": {},
+  "feature_importance": {},
+  "targets_processed": [],
+  "seasons": [
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "evaluation": {
+    "timestamp": "2025-04-20T16:20:33.598592",
+    "models_evaluated": 0,
+    "successful_evaluations": 0,
+    "evaluation_errors": 0,
+    "model_results": {},
+    "best_models": {}
+  },
+  "status": "success",
+  "training_details": {
+    "feature_count": 0,
+    "total_samples": 400,
+    "system_info": {
+      "python_version": "3.13.1",
+      "platform": "Windows-11-10.0.22631-SP0",
+      "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    }
+  },
+  "end_time": "2025-04-20T16:20:33.599604",
+  "run_id": "training_run_20250420_162033",
+  "duration_seconds": 397.016222,
+  "duration_formatted": "0:06:37.016222"
+}
