@@ -25,6 +25,22 @@ import importlib
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Union
 
+# Define the NumpyEncoder class
+class NumpyEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for NumPy types
+    """
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        return super(NumpyEncoder, self).default(obj)
+
 from .config import logger
 from .data_collector import DataCollector
 from .feature_engineering import FeatureEngineering
@@ -167,16 +183,13 @@ class PlayerPropsTrainer:
             # 3. Train models for each prop type
             logger.info("Step 3: Training models for each prop type")
             
-            # Load model trainers from main pipeline
-            model_trainers = self._load_model_trainers()
+            # Get all model types from config
+            model_types = self.config['training'].get('models', [
+                'gradient_boosting', 'random_forest', 'bayesian', 'ensemble_model',
+                'ensemble_stacking', 'combined_gradient_boosting', 'hyperparameter_tuning'
+            ])
             
-            if not model_trainers:
-                logger.error("No valid model trainers found. Aborting training.")
-                return self._finalize_results({
-                    'status': 'failed',
-                    'error': 'No valid model trainers for player props',
-                    'models_trained': 0
-                })
+            logger.info(f"Will train {len(model_types)} different model types for each player prop")
             
             models_trained = []
             training_results = {}
@@ -189,7 +202,7 @@ class PlayerPropsTrainer:
                 # Prepare features for this player prop
                 X, y = self.prepare_player_features_for_target(features, prop_column, prediction_type)
                 
-                if len(X) == 0 or len(y) == 0:
+                if X is None or y is None or len(X) == 0 or len(y) == 0:
                     logger.warning(f"Insufficient data for {prop_column} target. Skipping.")
                     continue
                 
@@ -198,139 +211,177 @@ class PlayerPropsTrainer:
                     feature_names = X.columns.tolist()
                     X_values = X.values
                 else:
-                    feature_names = None
+                    feature_names = [f"feature_{i}" for i in range(X.shape[1])]
                     X_values = X
                 
                 # Split data
-                X_train, X_test, y_train, y_test = generate_train_test_split(
+                from sklearn.model_selection import train_test_split
+                X_train, X_test, y_train, y_test = train_test_split(
                     X_values, y, 
                     test_size=self.config['training'].get('test_size', 0.2),
-                    random_state=self.config['training'].get('random_state', 42),
-                    chronological=True  # Use chronological split for time series data
+                    random_state=self.config['training'].get('random_state', 42)
                 )
                 
-                # Normalize features if enabled
-                if self.config['feature_engineering'].get('normalize_features', False):
-                    X_train, scaler, X_test = normalize_features(
-                        X_train, X_test, 
-                        method=self.config['feature_engineering'].get('normalization_method', 'standard')
-                    )
-                
-                # Train each model for this prop type
+                # Train each model type for this prop
                 prop_results = {}
                 
-                for model_name, trainer in model_trainers.items():
+                for model_name in model_types:
                     try:
                         logger.info(f"Training {model_name} for {prop_type['name']}...")
                         
-                        if not trainer.supports_prediction_type(prediction_type):
-                            logger.warning(f"{model_name} does not support {prediction_type} prediction. Skipping.")
-                            continue
+                        # Initialize the appropriate model based on type
+                        model = None
                         
-                        # Train the model
-                        train_start = time.time()
-                        model = trainer.train(X_train, y_train, prediction_type)
-                        train_time = time.time() - train_start
+                        if model_name == 'gradient_boosting':
+                            # Always regression for player props
+                            from sklearn.ensemble import GradientBoostingRegressor
+                            model = GradientBoostingRegressor(random_state=42)
                         
-                        if model is None:
-                            logger.error(f"Failed to train {model_name} for {prop_type['name']}")
-                            continue
+                        elif model_name == 'random_forest':
+                            from sklearn.ensemble import RandomForestRegressor
+                            model = RandomForestRegressor(random_state=42)
                         
-                        # Store model and metadata
-                        model_id = f"player_{prop_type['name']}_{model_name}"
-                        model_metadata = {
-                            'target': prop_type['name'],
-                            'prediction_type': prediction_type,
-                            'training_samples': len(X_train),
-                            'feature_count': X_train.shape[1],
-                            'training_time': train_time,
-                            'training_time_formatted': format_time_elapsed(train_time),
-                            'timestamp': datetime.now().isoformat(),
-                            'seasons': seasons,
-                            'model_type': model_name
-                        }
+                        elif model_name == 'bayesian':
+                            from sklearn.linear_model import BayesianRidge
+                            model = BayesianRidge()
                         
-                        # Save model
-                        model_path = self.results_manager.save_model(
-                            model_id, model, metadata=model_metadata
-                        )
-                        
-                        # Evaluate model
-                        evaluation_result = self.evaluator.evaluate_model(
-                            model_id, model, X_test, y_test, 
-                            features=feature_names, prediction_type=prediction_type
-                        )
-                        
-                        # Calculate feature importance
-                        if feature_names is not None and hasattr(model, 'feature_importances_'):
-                            importance_df = calculate_feature_importance(model, X_train, feature_names)
-                            if not importance_df.empty:
-                                model_metadata['feature_importance'] = importance_df.to_dict(orient='records')
-                        
-                        # Record results
-                        prop_results[model_id] = {
-                            'model_path': model_path,
-                            'metadata': model_metadata,
-                            'evaluation': evaluation_result
-                        }
-                        
-                        # Prepare production version if specified
-                        if self.config['results'].get('prepare_production_models', False) and \
-                           evaluation_result.get('metrics', {}).get(self.config['evaluation'].get('primary_metric'), 0) > \
-                           self.config['evaluation'].get('production_threshold', 0.7):
+                        elif model_name == 'ensemble_model':
+                            from sklearn.ensemble import VotingRegressor
+                            from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+                            from sklearn.linear_model import BayesianRidge
                             
-                            prod_path = self.results_manager.prepare_model_for_deployment(
-                                model_id, model_path, metadata={
-                                    **model_metadata,
-                                    'evaluation': evaluation_result.get('metrics', {})
-                                }
+                            estimators = [
+                                ('rf', RandomForestRegressor(random_state=42)),
+                                ('gb', GradientBoostingRegressor(random_state=42)),
+                                ('br', BayesianRidge())
+                            ]
+                            model = VotingRegressor(estimators=estimators)
+                        
+                        elif model_name == 'ensemble_stacking':
+                            from sklearn.ensemble import StackingRegressor
+                            from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+                            from sklearn.linear_model import LinearRegression, BayesianRidge
+                            
+                            estimators = [
+                                ('rf', RandomForestRegressor(random_state=42)),
+                                ('gb', GradientBoostingRegressor(random_state=42)),
+                                ('br', BayesianRidge())
+                            ]
+                            model = StackingRegressor(
+                                estimators=estimators,
+                                final_estimator=LinearRegression()
                             )
-                            prop_results[model_id]['production_path'] = prod_path
                         
-                        # Count successful training
-                        models_trained.append(model_id)
-                        self.metrics['player_models_trained'] += 1
+                        elif model_name == 'combined_gradient_boosting':
+                            from sklearn.ensemble import GradientBoostingRegressor
+                            model = GradientBoostingRegressor(
+                                n_estimators=200,
+                                learning_rate=0.1,
+                                max_depth=5,
+                                random_state=42
+                            )
                         
+                        elif model_name == 'hyperparameter_tuning':
+                            from sklearn.model_selection import GridSearchCV
+                            from sklearn.ensemble import RandomForestRegressor
+                            
+                            base_model = RandomForestRegressor(random_state=42)
+                            param_grid = {
+                                'n_estimators': [50, 100],
+                                'max_depth': [10, 20],
+                                'min_samples_split': [5, 10]
+                            }
+                            model = GridSearchCV(
+                                base_model, param_grid, cv=3, n_jobs=-1,
+                                scoring='neg_mean_squared_error'
+                            )
+                        
+                        # Train model if successfully initialized
+                        if model is not None:
+                            train_start = time.time()
+                            logger.info(f"Fitting {model_name} model with {X_train.shape[0]} training samples")
+                            model.fit(X_train, y_train)
+                            train_time = time.time() - train_start
+                            
+                            # Evaluate model
+                            from sklearn.metrics import mean_squared_error, r2_score
+                            y_pred = model.predict(X_test)
+                            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                            r2 = r2_score(y_test, y_pred)
+                            logger.info(f"RMSE: {rmse:.4f}, R²: {r2:.4f}")
+                            
+                            # Store model and metadata
+                            model_id = f"player_{prop_type['name']}_{model_name}"
+                            
+                            # Save model
+                            import joblib
+                            model_path = os.path.join(
+                                self.config['paths']['models_dir'],
+                                f"{model_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl"
+                            )
+                            joblib.dump(model, model_path)
+                            logger.info(f"Successfully saved model to {model_path}")
+                            
+                            # Add to list of trained models
+                            models_trained.append(model_id)
+                            self.metrics['player_models_trained'] += 1
+                            
+                            # Record evaluation results
+                            prop_results[model_id] = {
+                                'model_path': model_path,
+                                'training_time': train_time,
+                                'training_time_formatted': format_time_elapsed(train_time),
+                                'metrics': {
+                                    'rmse': rmse,
+                                    'r2': r2
+                                }
+                            }
+                        else:
+                            logger.error(f"Failed to initialize {model_name} model for {prop_type['name']}")
+                    
                     except Exception as e:
                         logger.error(f"Error training {model_name} for {prop_type['name']}: {str(e)}")
                         logger.error(traceback.format_exc())
                         self.metrics['errors'] += 1
                 
+                # Add results for this prop type
                 training_results[prop_type['name']] = prop_results
             
-            # Generate report
+            # Generate evaluation report
             logger.info("Generating player props training report")
-            evaluation_report = self.evaluator.generate_evaluation_report(
-                os.path.join(self.config['paths']['results_dir'], 'player_props_evaluation_report.json')
-            )
+            if models_trained:
+                evaluation_path = os.path.join(
+                    self.config['paths']['results_dir'],
+                    'player_props_evaluation_report.json'
+                )
+                with open(evaluation_path, 'w') as f:
+                    json.dump(training_results, f, indent=4, cls=NumpyEncoder)
+                logger.info(f"Evaluation report saved to {evaluation_path}")
             
             # Finalize results
-            full_results = {
-                'models_trained': models_trained,
-                'props_processed': list(training_results.keys()),
-                'metrics': self.metrics,
-                'seasons': seasons,
-                'evaluation': evaluation_report,
+            logger.info("Player props training completed successfully")
+            logger.info(f"Trained {len(models_trained)} player prop models")
+            
+            # Log training stats
+            logger.info(f"Player data collected: {self.metrics['player_data_collected']}")
+            logger.info(f"Player features created: {self.metrics['player_features_created']}")
+            logger.info(f"Player models trained: {self.metrics['player_models_trained']}")
+            logger.info(f"Errors encountered: {self.metrics['errors']}")
+            
+            return self._finalize_results({
                 'status': 'success',
-                'training_details': {
-                    'feature_count': self.metrics['player_features_created'],
-                    'total_samples': self.metrics['player_data_collected'],
-                    'models_trained': self.metrics['player_models_trained']
-                }
-            }
-            
-            return self._finalize_results(full_results)
-            
+                'models_trained': models_trained,
+                'metrics': self.metrics,
+                'evaluation': training_results
+            })
+        
         except Exception as e:
-            logger.error(f"Unexpected error in player props training: {str(e)}")
+            logger.error(f"Error in player props training: {str(e)}")
             logger.error(traceback.format_exc())
-            self.metrics['errors'] += 1
-            
             return self._finalize_results({
                 'status': 'failed',
                 'error': str(e),
-                'traceback': traceback.format_exc(),
-                'models_trained': self.metrics['player_models_trained']
+                'models_trained': []
             })
     
     def collect_player_data(self, seasons: List[int]) -> Tuple[List[Dict[str, Any]], bool]:
@@ -585,43 +636,6 @@ class PlayerPropsTrainer:
         
         logger.info(f"Auto-detected seasons for player props: {seasons}")
         return seasons
-    
-    def _load_model_trainers(self) -> Dict[str, Any]:
-        """
-        Load model trainers dynamically
-        
-        Returns:
-            Dictionary of model trainers
-        """
-        model_trainers = {}
-        model_configs = self.config.get('models', {})
-        
-        # Get list of enabled models
-        enabled_models = self.config['training'].get('models', [])
-        
-        for model_name in enabled_models:
-            if model_name not in model_configs:
-                logger.warning(f"Model {model_name} not found in configuration. Skipping.")
-                continue
-                
-            try:
-                # Import trainer dynamically
-                module_path = f".model_trainers.{model_name}_trainer"
-                module = importlib.import_module(module_path, package="src.Model_training_pipeline")
-                
-                # Get trainer class (assumed to be CamelCase of model_name + 'Trainer')
-                class_name = ''.join(word.capitalize() for word in model_name.split('_')) + 'Trainer'
-                trainer_class = getattr(module, class_name)
-                
-                # Initialize trainer with config
-                trainer = trainer_class(model_configs[model_name])
-                model_trainers[model_name] = trainer
-                logger.info(f"Loaded model trainer: {model_name}")
-                
-            except (ImportError, AttributeError) as e:
-                logger.error(f"Failed to load model trainer {model_name}: {str(e)}")
-        
-        return model_trainers
     
     def _finalize_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """

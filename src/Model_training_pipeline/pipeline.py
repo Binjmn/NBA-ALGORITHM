@@ -331,7 +331,7 @@ class TrainingPipeline:
                                 logger.info(f"Created training data with {X.shape[0]} samples and {X.shape[1]} features")
                                 
                                 # Train a model for each model type
-                                for model_name in ['gradient_boosting', 'random_forest']:
+                                for model_name in self.config['training'].get('models', ['gradient_boosting', 'random_forest']):
                                     try:
                                         logger.info(f"Training {model_name} model for {target_name}")
                                         
@@ -341,7 +341,7 @@ class TrainingPipeline:
                                             X, y, test_size=0.2, random_state=42
                                         )
                                         
-                                        # Get appropriate model
+                                        # Get appropriate model based on type
                                         model = None
                                         if model_name == 'gradient_boosting':
                                             if prediction_type == 'classification':
@@ -357,9 +357,108 @@ class TrainingPipeline:
                                             else:  # regression
                                                 from sklearn.ensemble import RandomForestRegressor
                                                 model = RandomForestRegressor(random_state=42)
+                                        elif model_name == 'bayesian':
+                                            # Import and configure Bayesian model
+                                            if prediction_type == 'classification':
+                                                from sklearn.naive_bayes import GaussianNB
+                                                model = GaussianNB()
+                                            else:  # regression - use a Bayesian regression approach
+                                                from sklearn.linear_model import BayesianRidge
+                                                model = BayesianRidge()
+                                        elif model_name == 'ensemble_model':
+                                            # Create a voting ensemble of multiple models
+                                            if prediction_type == 'classification':
+                                                from sklearn.ensemble import VotingClassifier
+                                                estimators = [
+                                                    ('rf', RandomForestClassifier(random_state=42)),
+                                                    ('gb', GradientBoostingClassifier(random_state=42)),
+                                                    ('nb', GaussianNB())
+                                                ]
+                                                model = VotingClassifier(estimators=estimators)
+                                            else:  # regression
+                                                from sklearn.ensemble import VotingRegressor
+                                                estimators = [
+                                                    ('rf', RandomForestRegressor(random_state=42)),
+                                                    ('gb', GradientBoostingRegressor(random_state=42)),
+                                                    ('br', BayesianRidge())
+                                                ]
+                                                model = VotingRegressor(estimators=estimators)
+                                        elif model_name == 'ensemble_stacking':
+                                            # Create a stacking ensemble
+                                            if prediction_type == 'classification':
+                                                from sklearn.ensemble import StackingClassifier
+                                                from sklearn.linear_model import LogisticRegression
+                                                estimators = [
+                                                    ('rf', RandomForestClassifier(random_state=42)),
+                                                    ('gb', GradientBoostingClassifier(random_state=42)),
+                                                    ('nb', GaussianNB())
+                                                ]
+                                                model = StackingClassifier(
+                                                    estimators=estimators,
+                                                    final_estimator=LogisticRegression()
+                                                )
+                                            else:  # regression
+                                                from sklearn.ensemble import StackingRegressor
+                                                from sklearn.linear_model import LinearRegression
+                                                estimators = [
+                                                    ('rf', RandomForestRegressor(random_state=42)),
+                                                    ('gb', GradientBoostingRegressor(random_state=42)),
+                                                    ('br', BayesianRidge())
+                                                ]
+                                                model = StackingRegressor(
+                                                    estimators=estimators,
+                                                    final_estimator=LinearRegression()
+                                                )
+                                        elif model_name == 'combined_gradient_boosting':
+                                            # A specialized gradient boosting implementation
+                                            if prediction_type == 'classification':
+                                                from sklearn.ensemble import GradientBoostingClassifier
+                                                # Use a higher number of estimators for better performance
+                                                model = GradientBoostingClassifier(
+                                                    n_estimators=200,
+                                                    learning_rate=0.1,
+                                                    max_depth=5,
+                                                    random_state=42
+                                                )
+                                            else:  # regression
+                                                from sklearn.ensemble import GradientBoostingRegressor
+                                                model = GradientBoostingRegressor(
+                                                    n_estimators=200,
+                                                    learning_rate=0.1,
+                                                    max_depth=5,
+                                                    random_state=42
+                                                )
+                                        elif model_name == 'hyperparameter_tuning':
+                                            # Use GridSearchCV to find optimal hyperparameters
+                                            from sklearn.model_selection import GridSearchCV
+                                            if prediction_type == 'classification':
+                                                from sklearn.ensemble import RandomForestClassifier
+                                                base_model = RandomForestClassifier(random_state=42)
+                                                param_grid = {
+                                                    'n_estimators': [50, 100],
+                                                    'max_depth': [10, 20],
+                                                    'min_samples_split': [5, 10]
+                                                }
+                                                model = GridSearchCV(
+                                                    base_model, param_grid, cv=3, n_jobs=-1,
+                                                    scoring='accuracy'
+                                                )
+                                            else:  # regression
+                                                from sklearn.ensemble import RandomForestRegressor
+                                                base_model = RandomForestRegressor(random_state=42)
+                                                param_grid = {
+                                                    'n_estimators': [50, 100],
+                                                    'max_depth': [10, 20],
+                                                    'min_samples_split': [5, 10]
+                                                }
+                                                model = GridSearchCV(
+                                                    base_model, param_grid, cv=3, n_jobs=-1,
+                                                    scoring='neg_mean_squared_error'
+                                                )
                                         
                                         # Train model
                                         if model is not None:
+                                            logger.info(f"Fitting {model_name} model with {X_train.shape[0]} training samples")
                                             model.fit(X_train, y_train)
                                             
                                             # Evaluate model
@@ -391,6 +490,8 @@ class TrainingPipeline:
                                             game_outcome_models_trained += 1
                                             self.metrics['pipeline']['game_outcome_models_trained'] += 1
                                             self.metrics['pipeline']['models_trained'] += 1
+                                        else:
+                                            logger.error(f"Failed to initialize {model_name} model for {target_column}")
                                     except Exception as e:
                                         logger.error(f"Error training {model_name} model for {target_column}: {str(e)}")
                                         logger.error(traceback.format_exc())

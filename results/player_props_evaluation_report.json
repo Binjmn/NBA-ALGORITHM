@@ -1,816 +1,392 @@
 {
-  "timestamp": "2025-04-20T19:32:20.720725",
-  "models_evaluated": 12,
-  "successful_evaluations": 12,
-  "evaluation_errors": 0,
-  "model_results": {
-    "player_player_points_gradient_boosting": {
-      "model_name": "player_player_points_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:14.773122",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 2.428201863511866,
-        "rmse": 1.5582688675295628,
-        "mae": 0.8938417251893049,
-        "r2": 0.9657894237689124
-      },
-      "residuals": {
-        "mean": -0.004266608732208728,
-        "std": 1.5582630264373831,
-        "min": -8.06431506662048,
-        "max": 11.83568174171192
-      },
-      "feature_importance": [
-        {
-          "feature": "player_fgm",
-          "importance": 0.9437730151540593
+    "player_points": {
+        "player_player_points_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_gradient_boosting_20250420_195840.pkl",
+            "training_time": 0.363217830657959,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.5579626090401935,
+                "r2": 0.9658028697794506
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.028801732693185554
+        "player_player_points_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_random_forest_20250420_195841.pkl",
+            "training_time": 0.8829574584960938,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.6938375309941796,
+                "r2": 0.9595778784000295
+            }
         },
-        {
-          "feature": "player_min",
-          "importance": 0.013310821819099747
+        "player_player_points_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_bayesian_20250420_195841.pkl",
+            "training_time": 0.005727291107177734,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.5501932638885707,
+                "r2": 0.9661430921035695
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.012679455180725734
+        "player_player_points_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_ensemble_model_20250420_195843.pkl",
+            "training_time": 1.169658899307251,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 1.558905293811149,
+                "r2": 0.9657614735782534
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.0014056768333119884
+        "player_player_points_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_ensemble_stacking_20250420_195849.pkl",
+            "training_time": 5.995590925216675,
+            "training_time_formatted": "0h 0m 5s",
+            "metrics": {
+                "rmse": 1.5430838202402395,
+                "r2": 0.9664529267940521
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 2.9298319617676844e-05
+        "player_player_points_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_combined_gradient_boosting_20250420_195850.pkl",
+            "training_time": 0.9242558479309082,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.5960451965112157,
+                "r2": 0.9641106186472009
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_points_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_hyperparameter_tuning_20250420_195854.pkl",
+            "training_time": 4.072774887084961,
+            "training_time_formatted": "0h 0m 4s",
+            "metrics": {
+                "rmse": 1.6163187259714293,
+                "r2": 0.9631930687232805
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 71.43795341733487,
-        "rmse": 8.452097575000828,
-        "mae": 6.510882016036655,
-        "rmse_improvement": 6.893828707471265,
-        "relative_improvement": 4.424030314101413
-      }
     },
-    "player_player_points_random_forest": {
-      "model_name": "player_player_points_random_forest",
-      "timestamp": "2025-04-20T19:32:15.443791",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 2.6706992098313647,
-        "rmse": 1.6342274045650331,
-        "mae": 0.9340744770085307,
-        "r2": 0.9623729145911699
-      },
-      "residuals": {
-        "mean": -0.0334690296499334,
-        "std": 1.6338846452199913,
-        "min": -8.021483501105003,
-        "max": 11.394726903986975
-      },
-      "feature_importance": [
-        {
-          "feature": "player_fgm",
-          "importance": 0.9717710158067063
+    "player_rebounds": {
+        "player_player_rebounds_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_gradient_boosting_20250420_195854.pkl",
+            "training_time": 0.31275367736816406,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 2.131494379219914,
+                "r2": 0.604020286918081
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.008108502682058243
+        "player_player_rebounds_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_random_forest_20250420_195855.pkl",
+            "training_time": 0.9679064750671387,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 2.283284756045568,
+                "r2": 0.545614245294487
+            }
         },
-        {
-          "feature": "player_min",
-          "importance": 0.007620399982009922
+        "player_player_rebounds_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_bayesian_20250420_195855.pkl",
+            "training_time": 0.004629611968994141,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 2.170556372586149,
+                "r2": 0.5893737657173199
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.006096372097873382
+        "player_player_rebounds_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_ensemble_model_20250420_195856.pkl",
+            "training_time": 1.2849359512329102,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 2.136641916120544,
+                "r2": 0.6021054036643619
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.005536183021986975
+        "player_player_rebounds_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_ensemble_stacking_20250420_195903.pkl",
+            "training_time": 6.676244497299194,
+            "training_time_formatted": "0h 0m 6s",
+            "metrics": {
+                "rmse": 2.1254242647413455,
+                "r2": 0.6062724341830535
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 0.0008675264093651931
+        "player_player_rebounds_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_combined_gradient_boosting_20250420_195904.pkl",
+            "training_time": 0.9406757354736328,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 2.221419554453566,
+                "r2": 0.5699036725728186
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_rebounds_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_hyperparameter_tuning_20250420_195906.pkl",
+            "training_time": 1.5206987857818604,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 2.14929547939566,
+                "r2": 0.5973786473033857
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 71.43795341733487,
-        "rmse": 8.452097575000828,
-        "mae": 6.510882016036655,
-        "rmse_improvement": 6.8178701704357945,
-        "relative_improvement": 4.171922555814955
-      }
     },
-    "player_player_rebounds_gradient_boosting": {
-      "model_name": "player_player_rebounds_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:15.884907",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 4.54345434056361,
-        "rmse": 2.131538022312436,
-        "mae": 1.2956984067868658,
-        "r2": 0.6040040711059742
-      },
-      "residuals": {
-        "mean": 0.006469797897703682,
-        "std": 2.131528203491282,
-        "min": -10.893527491333888,
-        "max": 16.126234880595614
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.7804816518799454
+    "player_assists": {
+        "player_player_assists_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_gradient_boosting_20250420_195906.pkl",
+            "training_time": 0.31931400299072266,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.6517024931205107,
+                "r2": 0.4745064920321024
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.09902889166991735
+        "player_player_assists_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_random_forest_20250420_195907.pkl",
+            "training_time": 0.948035717010498,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.7608094713969036,
+                "r2": 0.4027881209069112
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.06621477071850129
+        "player_player_assists_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_bayesian_20250420_195907.pkl",
+            "training_time": 0.0049457550048828125,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.6557240269127291,
+                "r2": 0.4719444536411582
+            }
         },
-        {
-          "feature": "player_fgm",
-          "importance": 0.0463415899774593
+        "player_player_assists_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_ensemble_model_20250420_195908.pkl",
+            "training_time": 1.2576870918273926,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 1.6548044049579418,
+                "r2": 0.47253087578248965
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.006833265309282258
+        "player_player_assists_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_ensemble_stacking_20250420_195915.pkl",
+            "training_time": 6.577818393707275,
+            "training_time_formatted": "0h 0m 6s",
+            "metrics": {
+                "rmse": 1.644965880861461,
+                "r2": 0.47878429245898335
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 0.0010998304448943735
+        "player_player_assists_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_combined_gradient_boosting_20250420_195916.pkl",
+            "training_time": 0.9720892906188965,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 1.6891161220477984,
+                "r2": 0.4504303754365333
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_assists_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_hyperparameter_tuning_20250420_195918.pkl",
+            "training_time": 1.5970475673675537,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 1.6645091676301438,
+                "r2": 0.4663259454822317
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 12.005345551737305,
-        "rmse": 3.464873093164785,
-        "mae": 2.5307369224895,
-        "rmse_improvement": 1.3333350708523493,
-        "relative_improvement": 0.6255272281776412
-      }
     },
-    "player_player_rebounds_random_forest": {
-      "model_name": "player_player_rebounds_random_forest",
-      "timestamp": "2025-04-20T19:32:16.606982",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 4.812872633307747,
-        "rmse": 2.193826026217154,
-        "mae": 1.3345702165457083,
-        "r2": 0.5805222576884276
-      },
-      "residuals": {
-        "mean": -0.013327182357137144,
-        "std": 2.1937855454711537,
-        "min": -9.292954484885602,
-        "max": 14.749804969540262
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.7197894642034718
+    "player_threes": {
+        "player_player_threes_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_gradient_boosting_20250420_195918.pkl",
+            "training_time": 0.32023191452026367,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.01956243828404859,
+                "r2": 0.9997561025882636
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.10698062147064713
+        "player_player_threes_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_random_forest_20250420_195918.pkl",
+            "training_time": 0.20795035362243652,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.022512988911321127,
+                "r2": 0.9996769813952555
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.07456514242682129
+        "player_player_threes_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_bayesian_20250420_195918.pkl",
+            "training_time": 0.00496220588684082,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 6.519301606258133e-14,
+                "r2": 1.0
+            }
         },
-        {
-          "feature": "player_fgm",
-          "importance": 0.06038958660894454
+        "player_player_threes_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_ensemble_model_20250420_195919.pkl",
+            "training_time": 0.49996232986450195,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.014018558873130992,
+                "r2": 0.9998747528184304
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.024877768797680565
+        "player_player_threes_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_ensemble_stacking_20250420_195922.pkl",
+            "training_time": 2.7013626098632812,
+            "training_time_formatted": "0h 0m 2s",
+            "metrics": {
+                "rmse": 1.781209538163472e-11,
+                "r2": 1.0
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 0.013397416492434538
+        "player_player_threes_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_combined_gradient_boosting_20250420_195922.pkl",
+            "training_time": 0.5166172981262207,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.01954034858428982,
+                "r2": 0.9997566530900668
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_threes_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_hyperparameter_tuning_20250420_195923.pkl",
+            "training_time": 0.5844166278839111,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.022289702812510245,
+                "r2": 0.9996833570826477
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 12.005345551737305,
-        "rmse": 3.464873093164785,
-        "mae": 2.5307369224895,
-        "rmse_improvement": 1.2710470669476313,
-        "relative_improvement": 0.5793745956872052
-      }
     },
-    "player_player_assists_gradient_boosting": {
-      "model_name": "player_player_assists_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:17.029200",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 2.7281211257805107,
-        "rmse": 1.6517024931205107,
-        "mae": 0.9697343713018817,
-        "r2": 0.4745064920321024
-      },
-      "residuals": {
-        "mean": 0.0012509487687457478,
-        "std": 1.6517020194053431,
-        "min": -6.262414678757349,
-        "max": 11.12115236710422
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.8607585880959723
+    "player_steals": {
+        "player_player_steals_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_gradient_boosting_20250420_195923.pkl",
+            "training_time": 0.3155200481414795,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.7121523025498327,
+                "r2": 0.24262452169329463
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.10431907426053726
+        "player_player_steals_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_random_forest_20250420_195924.pkl",
+            "training_time": 0.9177789688110352,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.7789023981656418,
+                "r2": 0.09399299369527958
+            }
         },
-        {
-          "feature": "player_fgm",
-          "importance": 0.01285362774435316
+        "player_player_steals_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_bayesian_20250420_195924.pkl",
+            "training_time": 0.004761457443237305,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.7041383077599904,
+                "r2": 0.2595744125406174
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.012363752876463066
+        "player_player_steals_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_ensemble_model_20250420_195925.pkl",
+            "training_time": 1.276097297668457,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 0.7177290076219472,
+                "r2": 0.23071640338118227
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.007728762359896083
+        "player_player_steals_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_ensemble_stacking_20250420_195932.pkl",
+            "training_time": 6.463130950927734,
+            "training_time_formatted": "0h 0m 6s",
+            "metrics": {
+                "rmse": 0.704551598235862,
+                "r2": 0.25870497923245583
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 0.0019761946627782226
+        "player_player_steals_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_combined_gradient_boosting_20250420_195933.pkl",
+            "training_time": 0.9489905834197998,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.7385222311407947,
+                "r2": 0.18549712744025015
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_steals_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_hyperparameter_tuning_20250420_195935.pkl",
+            "training_time": 1.5602014064788818,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 0.7177580511612212,
+                "r2": 0.23065414263883277
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 5.447880870561283,
-        "rmse": 2.334069594198357,
-        "mae": 1.5074455899198167,
-        "rmse_improvement": 0.6823671010778465,
-        "relative_improvement": 0.4131295459805666
-      }
     },
-    "player_player_assists_random_forest": {
-      "model_name": "player_player_assists_random_forest",
-      "timestamp": "2025-04-20T19:32:17.738470",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 2.8682236612949383,
-        "rmse": 1.6935830836705172,
-        "mae": 0.9876610303285216,
-        "r2": 0.44751979698878386
-      },
-      "residuals": {
-        "mean": -0.026264443870387483,
-        "std": 1.6933794141547598,
-        "min": -6.901633878376526,
-        "max": 12.701765706515706
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.68177875983185
+    "player_blocks": {
+        "player_player_blocks_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_gradient_boosting_20250420_195935.pkl",
+            "training_time": 0.35141777992248535,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.612518527295245,
+                "r2": 0.1623512390381212
+            }
         },
-        {
-          "feature": "player_fga",
-          "importance": 0.11032362269149619
+        "player_player_blocks_random_forest": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_random_forest_20250420_195936.pkl",
+            "training_time": 0.880540132522583,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.6733589363645758,
+                "r2": -0.012317506617427698
+            }
         },
-        {
-          "feature": "player_tpa",
-          "importance": 0.0731797231293012
+        "player_player_blocks_bayesian": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_bayesian_20250420_195936.pkl",
+            "training_time": 0.00538182258605957,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.6137234855259053,
+                "r2": 0.1590523198631485
+            }
         },
-        {
-          "feature": "player_fgm",
-          "importance": 0.07192949459727035
+        "player_player_blocks_ensemble_model": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_ensemble_model_20250420_195937.pkl",
+            "training_time": 1.2131338119506836,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 0.6169506060924669,
+                "r2": 0.15018521713181288
+            }
         },
-        {
-          "feature": "player_tpm",
-          "importance": 0.045297148585130335
+        "player_player_blocks_ensemble_stacking": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_ensemble_stacking_20250420_195943.pkl",
+            "training_time": 6.159063816070557,
+            "training_time_formatted": "0h 0m 6s",
+            "metrics": {
+                "rmse": 0.6098880657812539,
+                "r2": 0.16953035761819968
+            }
         },
-        {
-          "feature": "is_home_game",
-          "importance": 0.017491251164952017
+        "player_player_blocks_combined_gradient_boosting": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_combined_gradient_boosting_20250420_195944.pkl",
+            "training_time": 0.9729011058807373,
+            "training_time_formatted": "0h 0m 0s",
+            "metrics": {
+                "rmse": 0.6389295337352835,
+                "r2": 0.08855720164178105
+            }
         },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
+        "player_player_blocks_hyperparameter_tuning": {
+            "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_hyperparameter_tuning_20250420_195946.pkl",
+            "training_time": 1.4446310997009277,
+            "training_time_formatted": "0h 0m 1s",
+            "metrics": {
+                "rmse": 0.6224013121444631,
+                "r2": 0.13510280179105771
+            }
         }
-      ],
-      "baseline_comparison": {
-        "mse": 5.447880870561283,
-        "rmse": 2.334069594198357,
-        "mae": 1.5074455899198167,
-        "rmse_improvement": 0.6404865105278399,
-        "relative_improvement": 0.3781842867370333
-      }
-    },
-    "player_player_threes_gradient_boosting": {
-      "model_name": "player_player_threes_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:18.120441",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.00038268899161721006,
-        "rmse": 0.01956243828404859,
-        "mae": 0.0004067605341858612,
-        "r2": 0.9997561025882636
-      },
-      "residuals": {
-        "mean": 0.0003803580662545217,
-        "std": 0.019558740229335965,
-        "min": -2.0616596158515244e-05,
-        "max": 1.0011283894923722
-      },
-      "feature_importance": [
-        {
-          "feature": "player_tpm",
-          "importance": 0.9999999999999922
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 3.304236696447072e-15
-        },
-        {
-          "feature": "player_min",
-          "importance": 3.219407695096959e-15
-        },
-        {
-          "feature": "player_fga",
-          "importance": 1.1960621005079708e-15
-        },
-        {
-          "feature": "player_fgm",
-          "importance": 4.798619731416924e-17
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "team_offensive_rating",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 2.1149293623520427,
-        "rmse": 1.4542796712984896,
-        "mae": 0.738831615120275,
-        "rmse_improvement": 1.4347172330144409,
-        "relative_improvement": 73.34040942045164
-      }
-    },
-    "player_player_threes_random_forest": {
-      "model_name": "player_player_threes_random_forest",
-      "timestamp": "2025-04-20T19:32:18.351066",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.000904517496980861,
-        "rmse": 0.03007519737226775,
-        "mae": 0.0007408340223860174,
-        "r2": 0.9994235280313353
-      },
-      "residuals": {
-        "mean": 0.0004198210732119286,
-        "std": 0.030072267078611617,
-        "min": -0.14012215231448977,
-        "max": 1.5198778476855104
-      },
-      "feature_importance": [
-        {
-          "feature": "player_tpm",
-          "importance": 1.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_defensive_rating",
-          "importance": 0.0
-        },
-        {
-          "feature": "team_pace",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        },
-        {
-          "feature": "team_offensive_rating",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_reb",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 2.1149293623520427,
-        "rmse": 1.4542796712984896,
-        "mae": 0.738831615120275,
-        "rmse_improvement": 1.4242044739262218,
-        "relative_improvement": 47.354783953620085
-      }
-    },
-    "player_player_steals_gradient_boosting": {
-      "model_name": "player_player_steals_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:18.765924",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.5070941932412276,
-        "rmse": 0.7121054649707638,
-        "mae": 0.4456897631949147,
-        "r2": 0.24272414214580051
-      },
-      "residuals": {
-        "mean": -0.021077533494169177,
-        "std": 0.7117934607897363,
-        "min": -3.098133713572911,
-        "max": 6.975256279883859
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.9022236553371964
-        },
-        {
-          "feature": "player_fga",
-          "importance": 0.03872971509746594
-        },
-        {
-          "feature": "player_tpa",
-          "importance": 0.029677490848876376
-        },
-        {
-          "feature": "player_fgm",
-          "importance": 0.016217379711293792
-        },
-        {
-          "feature": "player_tpm",
-          "importance": 0.009031519573790388
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 0.004120239431377137
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 0.8869797632684231,
-        "rmse": 0.9417960306077018,
-        "mae": 0.4662084765177549,
-        "rmse_improvement": 0.22969056563693802,
-        "relative_improvement": 0.3225513311379631
-      }
-    },
-    "player_player_steals_random_forest": {
-      "model_name": "player_player_steals_random_forest",
-      "timestamp": "2025-04-20T19:32:19.498689",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.5480263567379179,
-        "rmse": 0.7402880228248447,
-        "mae": 0.46236176556337133,
-        "r2": 0.1815975513882545
-      },
-      "residuals": {
-        "mean": -0.03517957382450379,
-        "std": 0.7394516578678042,
-        "min": -2.5638207601222303,
-        "max": 6.736323839355089
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.5542892724993229
-        },
-        {
-          "feature": "player_fga",
-          "importance": 0.13793475575527828
-        },
-        {
-          "feature": "player_fgm",
-          "importance": 0.10926232834255759
-        },
-        {
-          "feature": "player_tpa",
-          "importance": 0.10847860308639266
-        },
-        {
-          "feature": "player_tpm",
-          "importance": 0.06107243212023462
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 0.02896260819621387
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 0.8869797632684231,
-        "rmse": 0.9417960306077018,
-        "mae": 0.4662084765177549,
-        "rmse_improvement": 0.20150800778285705,
-        "relative_improvement": 0.2722021720869239
-      }
-    },
-    "player_player_blocks_gradient_boosting": {
-      "model_name": "player_player_blocks_gradient_boosting",
-      "timestamp": "2025-04-20T19:32:19.945166",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.3751789462799358,
-        "rmse": 0.612518527295245,
-        "mae": 0.37391708347478064,
-        "r2": 0.1623512390381212
-      },
-      "residuals": {
-        "mean": -0.034014540520728935,
-        "std": 0.6115733458164273,
-        "min": -2.0003762335853414,
-        "max": 5.1526670915941875
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.7334107318412776
-        },
-        {
-          "feature": "player_tpa",
-          "importance": 0.14339651494968966
-        },
-        {
-          "feature": "player_fga",
-          "importance": 0.058614022442014455
-        },
-        {
-          "feature": "player_fgm",
-          "importance": 0.03819210642071112
-        },
-        {
-          "feature": "player_tpm",
-          "importance": 0.014197980595378851
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 0.012188643750928263
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 0.5318823978617793,
-        "rmse": 0.729302679181819,
-        "mae": 0.2898052691867125,
-        "rmse_improvement": 0.11678415188657398,
-        "relative_improvement": 0.19066223580577812
-      }
-    },
-    "player_player_blocks_random_forest": {
-      "model_name": "player_player_blocks_random_forest",
-      "timestamp": "2025-04-20T19:32:20.682749",
-      "prediction_type": "regression",
-      "test_samples": 2619,
-      "metrics": {
-        "mse": 0.4043901487623895,
-        "rmse": 0.6359167781733625,
-        "mae": 0.38159063318784275,
-        "r2": 0.09713242063625693
-      },
-      "residuals": {
-        "mean": -0.051790415752881444,
-        "std": 0.6338043085989028,
-        "min": -2.6834087538708298,
-        "max": 5.184367562992563
-      },
-      "feature_importance": [
-        {
-          "feature": "player_min",
-          "importance": 0.4649577217987744
-        },
-        {
-          "feature": "player_fga",
-          "importance": 0.17849122158711694
-        },
-        {
-          "feature": "player_fgm",
-          "importance": 0.1326935595719459
-        },
-        {
-          "feature": "player_tpa",
-          "importance": 0.13236084578547172
-        },
-        {
-          "feature": "player_tpm",
-          "importance": 0.05853445302776322
-        },
-        {
-          "feature": "is_home_game",
-          "importance": 0.03296219822892776
-        },
-        {
-          "feature": "days_rest",
-          "importance": 0.0
-        },
-        {
-          "feature": "opponent_position_defense",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_ast",
-          "importance": 0.0
-        },
-        {
-          "feature": "player_last5_avg_min",
-          "importance": 0.0
-        }
-      ],
-      "baseline_comparison": {
-        "mse": 0.5318823978617793,
-        "rmse": 0.729302679181819,
-        "mae": 0.2898052691867125,
-        "rmse_improvement": 0.09338590100845656,
-        "relative_improvement": 0.1468523936051862
-      }
     }
-  },
-  "best_models": {
-    "regression": "player_player_threes_gradient_boosting",
-    "regression_score": 0.01956243828404859
-  }
 }

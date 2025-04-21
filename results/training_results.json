@@ -3,22 +3,67 @@
   "models_trained": [
     "game_home_win_gradient_boosting",
     "game_home_win_random_forest",
+    "game_home_win_bayesian",
+    "game_home_win_ensemble_model",
+    "game_home_win_ensemble_stacking",
+    "game_home_win_combined_gradient_boosting",
+    "game_home_win_hyperparameter_tuning",
     "game_spread_diff_gradient_boosting",
     "game_spread_diff_random_forest",
+    "game_spread_diff_bayesian",
+    "game_spread_diff_ensemble_model",
+    "game_spread_diff_ensemble_stacking",
+    "game_spread_diff_combined_gradient_boosting",
+    "game_spread_diff_hyperparameter_tuning",
     "game_total_points_gradient_boosting",
     "game_total_points_random_forest",
+    "game_total_points_bayesian",
+    "game_total_points_ensemble_model",
+    "game_total_points_ensemble_stacking",
+    "game_total_points_combined_gradient_boosting",
+    "game_total_points_hyperparameter_tuning",
     "player_player_points_gradient_boosting",
     "player_player_points_random_forest",
+    "player_player_points_bayesian",
+    "player_player_points_ensemble_model",
+    "player_player_points_ensemble_stacking",
+    "player_player_points_combined_gradient_boosting",
+    "player_player_points_hyperparameter_tuning",
     "player_player_rebounds_gradient_boosting",
     "player_player_rebounds_random_forest",
+    "player_player_rebounds_bayesian",
+    "player_player_rebounds_ensemble_model",
+    "player_player_rebounds_ensemble_stacking",
+    "player_player_rebounds_combined_gradient_boosting",
+    "player_player_rebounds_hyperparameter_tuning",
     "player_player_assists_gradient_boosting",
     "player_player_assists_random_forest",
+    "player_player_assists_bayesian",
+    "player_player_assists_ensemble_model",
+    "player_player_assists_ensemble_stacking",
+    "player_player_assists_combined_gradient_boosting",
+    "player_player_assists_hyperparameter_tuning",
     "player_player_threes_gradient_boosting",
     "player_player_threes_random_forest",
+    "player_player_threes_bayesian",
+    "player_player_threes_ensemble_model",
+    "player_player_threes_ensemble_stacking",
+    "player_player_threes_combined_gradient_boosting",
+    "player_player_threes_hyperparameter_tuning",
     "player_player_steals_gradient_boosting",
     "player_player_steals_random_forest",
+    "player_player_steals_bayesian",
+    "player_player_steals_ensemble_model",
+    "player_player_steals_ensemble_stacking",
+    "player_player_steals_combined_gradient_boosting",
+    "player_player_steals_hyperparameter_tuning",
     "player_player_blocks_gradient_boosting",
-    "player_player_blocks_random_forest"
+    "player_player_blocks_random_forest",
+    "player_player_blocks_bayesian",
+    "player_player_blocks_ensemble_model",
+    "player_player_blocks_ensemble_stacking",
+    "player_player_blocks_combined_gradient_boosting",
+    "player_player_blocks_hyperparameter_tuning"
   ],
   "system_info": {
     "python_version": "3.13.1",
@@ -26,10 +71,10 @@
     "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
   },
   "timing": {
-    "start_time": "2025-04-20T19:25:53.145116",
-    "end_time": "2025-04-20T19:32:20.749424",
-    "total_time_seconds": 387.60430812835693,
-    "total_time_formatted": "0h 6m 27s"
+    "start_time": "2025-04-20T19:52:03.025049",
+    "end_time": "2025-04-20T19:59:46.491041",
+    "total_time_seconds": 463.46599197387695,
+    "total_time_formatted": "0h 7m 43s"
   },
   "metrics": {
     "data_collection": {
@@ -38,7 +83,7 @@
       "teams_collected": 0,
       "api_requests": 1,
       "api_errors": 0,
-      "processing_time": 4.016477584838867
+      "processing_time": 3.5223474502563477
     },
     "feature_engineering": {
       "features_created": 400,
@@ -49,15 +94,15 @@
       "processing_time": 0
     },
     "pipeline": {
-      "total_time_seconds": 387.60430812835693,
-      "models_trained": 18,
-      "game_outcome_models_trained": 6,
-      "player_props_models_trained": 12,
+      "total_time_seconds": 463.46599197387695,
+      "models_trained": 63,
+      "game_outcome_models_trained": 21,
+      "player_props_models_trained": 42,
       "errors": 0,
       "feature_count": 0
     }
   },
-  "models_count": 18,
+  "models_count": 63,
   "config": {
     "season": 2025,
     "data_collection": {

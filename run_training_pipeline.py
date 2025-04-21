@@ -94,7 +94,15 @@ def main():
                 'random_state': 42,
                 'handle_imbalance': True,
                 'imbalance_method': 'smote',
-                'models': ['gradient_boosting', 'random_forest'],
+                'models': [
+                    'gradient_boosting',
+                    'random_forest',
+                    'bayesian',
+                    'ensemble_model',
+                    'ensemble_stacking',
+                    'combined_gradient_boosting',
+                    'hyperparameter_tuning'
+                ],
                 'target_types': [
                     {'name': 'moneyline', 'column': 'home_win', 'type': 'classification'},
                     {'name': 'spread', 'column': 'spread_diff', 'type': 'regression'},
