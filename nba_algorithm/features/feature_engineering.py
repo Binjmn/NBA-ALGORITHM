@@ -375,8 +375,21 @@ def prepare_game_features(games: List[Dict], team_stats: Dict, odds: Dict, histo
         
         if missing_values > 0:
             logger.warning(f"Found {missing_values} missing values in features DataFrame")
-            # Fill missing values with column means or zeros, depending on what's appropriate
-            features_df = features_df.fillna(features_df.mean()).fillna(0)
+            # Handle numeric and non-numeric columns separately
+            numeric_cols = features_df.select_dtypes(include=['number']).columns
+            non_numeric_cols = features_df.select_dtypes(exclude=['number']).columns
+            
+            # Fill numeric columns with mean or 0
+            if len(numeric_cols) > 0:
+                features_df[numeric_cols] = features_df[numeric_cols].fillna(features_df[numeric_cols].mean()).fillna(0)
+            
+            # Fill non-numeric columns with empty string or most common value
+            if len(non_numeric_cols) > 0:
+                for col in non_numeric_cols:
+                    if features_df[col].dtype == 'object':
+                        # For object/string columns, use most common value if available, else empty string
+                        most_common = features_df[col].mode()[0] if not features_df[col].mode().empty else ''
+                        features_df[col] = features_df[col].fillna(most_common)
         
         logger.info(f"Prepared features for {len(features_df)} games")
         

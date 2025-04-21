@@ -14,8 +14,10 @@ import os
 import pickle
 import logging
 import traceback
+import glob
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List, Tuple
+from datetime import datetime
 
 from ..utils.config import MODELS_DIR
 
@@ -38,143 +40,195 @@ def load_model_from_file(model_path: str) -> Optional[Any]:
         return None
         
     try:
+        # First try standard pickle loading
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
         logger.info(f"Successfully loaded model from {model_path}")
         return model
-    except Exception as e:
-        logger.error(f"Error loading model from {model_path}: {str(e)}")
-        logger.error(traceback.format_exc())
-        return None
+    except Exception as e1:
+        # If that fails, try with a different pickle protocol
+        try:
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f, encoding='latin1')
+            logger.info(f"Successfully loaded model using latin1 encoding from {model_path}")
+            return model
+        except Exception as e2:
+            # Check if the file might be text instead of binary
+            try:
+                with open(model_path, 'r') as f:
+                    content = f.read(1000)  # Read first 1000 chars
+                    if content.strip().startswith('{') and '}' in content:
+                        logger.error(f"Model file {model_path} appears to be JSON, not a valid pickle file")
+                    elif "sklearn" in content or "joblib" in content:
+                        logger.error(f"Model file {model_path} appears to be a text file with model info, not binary")
+            except Exception:
+                pass  # Ignore errors from text inspection
+            
+            # Provide detailed error information
+            error_details = str(e1)
+            if "invalid load key" in error_details:
+                logger.error(f"Model file {model_path} appears to be corrupted: {error_details}")
+            else:
+                logger.error(f"Error loading model from {model_path}: {error_details}")
+                logger.error(traceback.format_exc())
+            return None
 
 
-def load_models() -> Dict[str, Any]:
+def find_latest_model_files(pattern: str, models_dir: str) -> List[Tuple[str, str]]:
     """
-    Load all available trained models from the models directory
-    with proper error handling and validation
+    Find the latest versions of model files that match a pattern
     
-    Returns:
-        Dictionary of loaded models
-    """
-    models = {}
-    model_files = {
-        "gradient_boosting": "production_gradient_boosting.pkl",
-        "random_forest": "production_random_forest.pkl",
-        "ensemble": "EnsembleStacking_20250417_134933_v1.pkl"  # Use the most recent ensemble model
-    }
-    
-    for model_type, filename in model_files.items():
-        model_path = str(MODELS_DIR / filename)
-        model = load_model_from_file(model_path)
+    Args:
+        pattern: Pattern to match for model files
+        models_dir: Directory to search for models
         
-        if model is not None:
-            models[model_type] = model
-            logger.info(f"Loaded {model_type} model from {filename}")
-        else:
-            logger.warning(f"Could not load {model_type} model from {filename}")
-    
-    if not models:
-        logger.error("No models could be loaded. Prediction capability will be limited.")
-    
-    return models
-
-
-def load_enhanced_models() -> Dict[str, Dict[str, Any]]:
+    Returns:
+        List of (model_type, filepath) tuples
     """
-    Load all available enhanced models for game and player prop predictions
+    model_files = []
     
-    This loads both the game prediction models (spread, moneyline) and
-    the player prop prediction models (points, assists, rebounds)
+    # Get all files matching the pattern
+    matching_files = glob.glob(os.path.join(models_dir, pattern))
+    
+    # Skip metadata.json files when dealing with player prop models
+    matching_files = [f for f in matching_files if "_metadata.json" not in f]
+    
+    if not matching_files:
+        logger.warning(f"No model files found matching pattern: {pattern} in {models_dir}")
+        return []
+    
+    # Group by model type and find the latest one of each type
+    model_types = {}
+    
+    # First try to get today's models (priority)
+    today = datetime.now().strftime("%Y%m%d")
+    today_models = [f for f in matching_files if today in f]
+    
+    # Use today's models if available, otherwise use all models
+    models_to_check = today_models if today_models else matching_files
+    
+    for file_path in models_to_check:
+        file_name = os.path.basename(file_path)
+        
+        # Extract model type (removing timestamp portions)
+        parts = file_name.split('_')
+        if len(parts) >= 3:  # Should have at least 3 parts
+            if 'player' in file_name:
+                # For player models: player_player_points_gradient_boosting_20250420_212744.pkl
+                if len(parts) >= 4:
+                    model_type = '_'.join(parts[2:4])  # e.g. 'points_gradient_boosting'
+                else:
+                    model_type = parts[2]  # Just get the prop type if structure is different
+            else:
+                # For game models: game_home_win_gradient_boosting_20250420_212027.pkl
+                model_type = parts[2]  # e.g. 'gradient_boosting'
+                
+            # Check if this is newer than what we already have or if we don't have this type yet
+            if model_type not in model_types or os.path.getmtime(file_path) > os.path.getmtime(model_types[model_type]):
+                model_types[model_type] = file_path
+                
+    # Convert to list of tuples
+    for model_type, file_path in model_types.items():
+        model_files.append((model_type, file_path))
+        logger.debug(f"Found model type {model_type}: {file_path}")
+    
+    if model_files:
+        logger.info(f"Found {len(model_files)} model files for pattern: {pattern}")
+    else:
+        logger.warning(f"No usable model files found for pattern: {pattern}")
+        
+    return model_files
+
+
+def load_ensemble_models() -> Dict[str, Any]:
+    """
+    Load ensemble of all available model types for enhanced prediction accuracy
+    
+    This function loads all variants of our trained models and creates ensembles:
+    - game_outcome models (moneyline, spread, total)
+    - player_props models
     
     Returns:
-        Dictionary of loaded models by type and target
+        Dictionary of loaded ensemble models by prediction type
     """
-    enhanced_models = {
-        "game": {},
+    ensembles = {
+        "moneyline": {},
+        "spread": {},
+        "total": {},
         "player_props": {}
     }
     
-    # Game prediction models
-    game_model_files = {
-        "spread": ["gradient_boost_spread.pkl", "random_forest_spread.pkl"],
-        "moneyline": ["gradient_boost_moneyline.pkl", "random_forest_moneyline.pkl"],
-        "total": ["gradient_boost_total.pkl", "random_forest_total.pkl"],
-        "ensemble": ["stacked_ensemble_spread.pkl", "stacked_ensemble_moneyline.pkl"]
-    }
+    # Results dir is one level up from MODELS_DIR
+    results_dir = str(Path(MODELS_DIR).parent)
+    models_dir = os.path.join(results_dir, "models")
     
-    # Load game prediction models
-    for model_type, filenames in game_model_files.items():
-        enhanced_models["game"][model_type] = {}
+    logger.info(f"Scanning for models in: {models_dir}")
+    
+    # Load game outcome models
+    game_moneyline_models = find_latest_model_files("game_home_win_*.pkl", models_dir)
+    game_spread_models = find_latest_model_files("game_spread_diff_*.pkl", models_dir)
+    game_total_models = find_latest_model_files("game_total_points_*.pkl", models_dir)
+    
+    # Load the models for each prediction type
+    for model_type, file_path in game_moneyline_models:
+        model = load_model_from_file(file_path)
+        if model is not None:
+            ensembles["moneyline"][model_type] = model
+            logger.info(f"Loaded moneyline model: {model_type}")
+    
+    for model_type, file_path in game_spread_models:
+        model = load_model_from_file(file_path)
+        if model is not None:
+            ensembles["spread"][model_type] = model
+            logger.info(f"Loaded spread model: {model_type}")
+    
+    for model_type, file_path in game_total_models:
+        model = load_model_from_file(file_path)
+        if model is not None:
+            ensembles["total"][model_type] = model
+            logger.info(f"Loaded total model: {model_type}")
+    
+    # Load player props models
+    player_prop_types = ["points", "rebounds", "assists", "threes", "steals", "blocks"]
+    player_props_models = {}
+    
+    for prop_type in player_prop_types:
+        player_props_models[prop_type] = find_latest_model_files(f"player_player_{prop_type}_*.pkl", models_dir)
         
-        for filename in filenames:
-            model_name = filename.split("_")[0]  # e.g., gradient_boost, random_forest
-            model_path = str(MODELS_DIR / filename)
-            model = load_model_from_file(model_path)
-            
+        # Load models for this prop type
+        prop_models = {}
+        for model_type, file_path in player_props_models[prop_type]:
+            model = load_model_from_file(file_path)
             if model is not None:
-                enhanced_models["game"][model_type][model_name] = model
-                logger.info(f"Loaded {model_name} model for {model_type} from {filename}")
-            else:
-                logger.warning(f"Could not load {model_name} model for {model_type} from {filename}")
+                prop_models[model_type] = model
+                logger.info(f"Loaded {prop_type} model: {model_type}")
+        
+        # Add to the player_props ensemble
+        if prop_models:
+            ensembles["player_props"][prop_type] = prop_models
     
-    # Load player prop models using our new dedicated loader
-    player_props_models = load_player_props_models()
-    if player_props_models:
-        enhanced_models["player_props"] = player_props_models
+    # Report loaded model counts
+    for prediction_type, models in ensembles.items():
+        if prediction_type != "player_props":
+            model_count = len(models)
+            logger.info(f"Loaded {model_count} {prediction_type} models")
+        else:
+            total_models = sum(len(prop_models) for prop_models in models.values())
+            logger.info(f"Loaded {total_models} player props models across {len(models)} prop types")
     
-    # Validate that we have at least some models
-    if not any(enhanced_models["game"].values()):
-        logger.error("No game prediction models could be loaded. Game predictions will be unavailable.")
-    
-    if not any(enhanced_models["player_props"].values()):
-        logger.warning("No player prop models could be loaded. Player prop predictions will be unavailable.")
-        # We'll still continue and just show a message in the predictions
-    
-    return enhanced_models
+    return ensembles
 
 
-def load_player_props_models() -> Dict[str, Dict[str, Any]]:
+# Add backward compatibility alias for existing code
+def load_models() -> Dict[str, Any]:
     """
-    Load all available player props models with dynamic discovery and validation
-    
-    This function looks for player props models in the dedicated player_props directory
-    and loads the most recent version of each model type for each prop type.
+    Backward compatibility alias for load_ensemble_models
     
     Returns:
-        Dictionary of loaded models by prop type and model type
+        Dictionary of loaded models, same as load_ensemble_models
     """
-    try:
-        # Import from our dedicated player props module
-        from .player_props_loader import load_player_props_models as load_impl
-        
-        # Call the implementation
-        player_models = load_impl()
-        
-        if not player_models:
-            logger.warning("No player props models could be loaded.")
-            return {}
-        
-        # Validate the returned models
-        total_models = sum(len(models) for models in player_models.values())
-        if total_models == 0:
-            logger.warning("Player props loader returned empty model dictionary")
-        else:
-            logger.info(f"Successfully loaded {total_models} player props models")
-            
-            # Log details of loaded models
-            for prop_type, models in player_models.items():
-                if models:
-                    logger.info(f"  - {prop_type}: {', '.join(models.keys())}")
-                    
-        return player_models
-    except ImportError as e:
-        logger.error(f"Failed to import player_props_loader module: {str(e)}")
-        logger.error("Ensure the player_props_loader.py file is properly installed")
-        return {}
-    except Exception as e:
-        logger.error(f"Unexpected error loading player props models: {str(e)}")
-        logger.error(traceback.format_exc())
-        return {}
+    logger.info("Using load_models() - this is an alias for load_ensemble_models()")
+    return load_ensemble_models()
 
 
 def check_player_props_ready() -> bool:
@@ -184,18 +238,16 @@ def check_player_props_ready() -> bool:
     Returns:
         bool: True if player props models are ready, False otherwise
     """
-    try:
-        # Load the player props models
-        player_models = load_player_props_models()
-        
-        # Check if we have any models
-        total_models = sum(len(models) for models in player_models.values())
-        if total_models > 0:
-            logger.info(f"Player props ready with {total_models} trained models")
-            return True
-        else:
-            logger.warning("No player props models available, player props not ready")
+    # Results dir is one level up from MODELS_DIR
+    results_dir = str(Path(MODELS_DIR).parent)
+    models_dir = os.path.join(results_dir, "models")
+    
+    # Check for at least one model file for each player prop type
+    prop_types = ["points", "rebounds", "assists", "threes", "steals", "blocks"]
+    
+    for prop_type in prop_types:
+        model_files = glob.glob(os.path.join(models_dir, f"player_player_{prop_type}_*.pkl"))
+        if not model_files:
             return False
-    except Exception as e:
-        logger.error(f"Error checking player props readiness: {str(e)}")
-        return False
+    
+    return True

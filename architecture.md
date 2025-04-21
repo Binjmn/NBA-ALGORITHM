@@ -20,6 +20,18 @@ Generates predictions for current day's games, including game outcomes, player s
 ### 5. Performance Tracking
 Monitors model performance and CLV over time, with automatic retraining when performance degrades.
 
+#### Key Components:
+
+- **PerformanceTracker** (`nba_algorithm/utils/performance_tracker.py`)
+  - Tracks prediction accuracy for all prediction types (moneyline, spread, total, player props)
+  - Records predictions and compares them against actual game outcomes
+  - Calculates and stores historical performance metrics for continuous improvement
+  - Provides filtering by time period (e.g., last 30 days) or prediction type
+  - Implements sophisticated logic for determining prediction correctness based on type
+  - Saves data to disk in JSON format for long-term analysis
+  - Supports automatic updates when new game outcomes become available
+  - Handles data consistency and deduplication through pandas operations
+
 ### 6. API Integration
 Provides a REST API for future UI/website integration.
 

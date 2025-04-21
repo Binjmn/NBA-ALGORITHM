@@ -1,0 +1,608 @@
+{
+  "games": [
+    {
+      "home_team": {
+        "id": 2,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "Boston",
+        "name": "Celtics",
+        "full_name": "Boston Celtics",
+        "abbreviation": "BOS"
+      },
+      "away_team": {
+        "id": 22,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Orlando",
+        "name": "Magic",
+        "full_name": "Orlando Magic",
+        "abbreviation": "ORL"
+      },
+      "date": "2025-04-20T00:00:00",
+      "predictions": {},
+      "game_id": 18422268
+    },
+    {
+      "home_team": {
+        "id": 6,
+        "conference": "East",
+        "division": "Central",
+        "city": "Cleveland",
+        "name": "Cavaliers",
+        "full_name": "Cleveland Cavaliers",
+        "abbreviation": "CLE"
+      },
+      "away_team": {
+        "id": 16,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Miami",
+        "name": "Heat",
+        "full_name": "Miami Heat",
+        "abbreviation": "MIA"
+      },
+      "date": "2025-04-20T00:00:00",
+      "predictions": {},
+      "game_id": 18425147
+    },
+    {
+      "home_team": {
+        "id": 21,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Oklahoma City",
+        "name": "Thunder",
+        "full_name": "Oklahoma City Thunder",
+        "abbreviation": "OKC"
+      },
+      "away_team": {
+        "id": 15,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Memphis",
+        "name": "Grizzlies",
+        "full_name": "Memphis Grizzlies",
+        "abbreviation": "MEM"
+      },
+      "date": "2025-04-20T00:00:00",
+      "predictions": {},
+      "game_id": 18425247
+    },
+    {
+      "home_team": {
+        "id": 11,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Houston",
+        "name": "Rockets",
+        "full_name": "Houston Rockets",
+        "abbreviation": "HOU"
+      },
+      "away_team": {
+        "id": 10,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Golden State",
+        "name": "Warriors",
+        "full_name": "Golden State Warriors",
+        "abbreviation": "GSW"
+      },
+      "date": "2025-04-20T00:00:00",
+      "predictions": {},
+      "game_id": 18422290
+    },
+    {
+      "home_team": {
+        "id": 8,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Denver",
+        "name": "Nuggets",
+        "full_name": "Denver Nuggets",
+        "abbreviation": "DEN"
+      },
+      "away_team": {
+        "id": 13,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "LA",
+        "name": "Clippers",
+        "full_name": "LA Clippers",
+        "abbreviation": "LAC"
+      },
+      "date": "2025-04-21T00:00:00",
+      "predictions": {},
+      "game_id": 18422292
+    },
+    {
+      "home_team": {
+        "id": 20,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "New York",
+        "name": "Knicks",
+        "full_name": "New York Knicks",
+        "abbreviation": "NYK"
+      },
+      "away_team": {
+        "id": 9,
+        "conference": "East",
+        "division": "Central",
+        "city": "Detroit",
+        "name": "Pistons",
+        "full_name": "Detroit Pistons",
+        "abbreviation": "DET"
+      },
+      "date": "2025-04-21T00:00:00",
+      "predictions": {},
+      "game_id": 18422291
+    },
+    {
+      "home_team": {
+        "id": 21,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Oklahoma City",
+        "name": "Thunder",
+        "full_name": "Oklahoma City Thunder",
+        "abbreviation": "OKC"
+      },
+      "away_team": {
+        "id": 15,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Memphis",
+        "name": "Grizzlies",
+        "full_name": "Memphis Grizzlies",
+        "abbreviation": "MEM"
+      },
+      "date": "2025-04-22T00:00:00",
+      "predictions": {},
+      "game_id": 18425252
+    },
+    {
+      "home_team": {
+        "id": 12,
+        "conference": "East",
+        "division": "Central",
+        "city": "Indiana",
+        "name": "Pacers",
+        "full_name": "Indiana Pacers",
+        "abbreviation": "IND"
+      },
+      "away_team": {
+        "id": 17,
+        "conference": "East",
+        "division": "Central",
+        "city": "Milwaukee",
+        "name": "Bucks",
+        "full_name": "Milwaukee Bucks",
+        "abbreviation": "MIL"
+      },
+      "date": "2025-04-22T00:00:00",
+      "predictions": {},
+      "game_id": 18422293
+    },
+    {
+      "home_team": {
+        "id": 14,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Los Angeles",
+        "name": "Lakers",
+        "full_name": "Los Angeles Lakers",
+        "abbreviation": "LAL"
+      },
+      "away_team": {
+        "id": 18,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Minnesota",
+        "name": "Timberwolves",
+        "full_name": "Minnesota Timberwolves",
+        "abbreviation": "MIN"
+      },
+      "date": "2025-04-22T00:00:00",
+      "predictions": {},
+      "game_id": 18422294
+    },
+    {
+      "home_team": {
+        "id": 6,
+        "conference": "East",
+        "division": "Central",
+        "city": "Cleveland",
+        "name": "Cavaliers",
+        "full_name": "Cleveland Cavaliers",
+        "abbreviation": "CLE"
+      },
+      "away_team": {
+        "id": 16,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Miami",
+        "name": "Heat",
+        "full_name": "Miami Heat",
+        "abbreviation": "MIA"
+      },
+      "date": "2025-04-23T00:00:00",
+      "predictions": {},
+      "game_id": 18425154
+    },
+    {
+      "home_team": {
+        "id": 11,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Houston",
+        "name": "Rockets",
+        "full_name": "Houston Rockets",
+        "abbreviation": "HOU"
+      },
+      "away_team": {
+        "id": 10,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Golden State",
+        "name": "Warriors",
+        "full_name": "Golden State Warriors",
+        "abbreviation": "GSW"
+      },
+      "date": "2025-04-23T00:00:00",
+      "predictions": {},
+      "game_id": 18422296
+    },
+    {
+      "home_team": {
+        "id": 2,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "Boston",
+        "name": "Celtics",
+        "full_name": "Boston Celtics",
+        "abbreviation": "BOS"
+      },
+      "away_team": {
+        "id": 22,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Orlando",
+        "name": "Magic",
+        "full_name": "Orlando Magic",
+        "abbreviation": "ORL"
+      },
+      "date": "2025-04-23T00:00:00",
+      "predictions": {},
+      "game_id": 18422295
+    },
+    {
+      "home_team": {
+        "id": 9,
+        "conference": "East",
+        "division": "Central",
+        "city": "Detroit",
+        "name": "Pistons",
+        "full_name": "Detroit Pistons",
+        "abbreviation": "DET"
+      },
+      "away_team": {
+        "id": 20,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "New York",
+        "name": "Knicks",
+        "full_name": "New York Knicks",
+        "abbreviation": "NYK"
+      },
+      "date": "2025-04-24T00:00:00",
+      "predictions": {},
+      "game_id": 18422297
+    },
+    {
+      "home_team": {
+        "id": 13,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "LA",
+        "name": "Clippers",
+        "full_name": "LA Clippers",
+        "abbreviation": "LAC"
+      },
+      "away_team": {
+        "id": 8,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Denver",
+        "name": "Nuggets",
+        "full_name": "Denver Nuggets",
+        "abbreviation": "DEN"
+      },
+      "date": "2025-04-24T00:00:00",
+      "predictions": {},
+      "game_id": 18422298
+    },
+    {
+      "home_team": {
+        "id": 15,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Memphis",
+        "name": "Grizzlies",
+        "full_name": "Memphis Grizzlies",
+        "abbreviation": "MEM"
+      },
+      "away_team": {
+        "id": 21,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Oklahoma City",
+        "name": "Thunder",
+        "full_name": "Oklahoma City Thunder",
+        "abbreviation": "OKC"
+      },
+      "date": "2025-04-24T00:00:00",
+      "predictions": {},
+      "game_id": 18425258
+    },
+    {
+      "home_team": {
+        "id": 17,
+        "conference": "East",
+        "division": "Central",
+        "city": "Milwaukee",
+        "name": "Bucks",
+        "full_name": "Milwaukee Bucks",
+        "abbreviation": "MIL"
+      },
+      "away_team": {
+        "id": 12,
+        "conference": "East",
+        "division": "Central",
+        "city": "Indiana",
+        "name": "Pacers",
+        "full_name": "Indiana Pacers",
+        "abbreviation": "IND"
+      },
+      "date": "2025-04-25T00:00:00",
+      "predictions": {},
+      "game_id": 18422300
+    },
+    {
+      "home_team": {
+        "id": 18,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Minnesota",
+        "name": "Timberwolves",
+        "full_name": "Minnesota Timberwolves",
+        "abbreviation": "MIN"
+      },
+      "away_team": {
+        "id": 14,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Los Angeles",
+        "name": "Lakers",
+        "full_name": "Los Angeles Lakers",
+        "abbreviation": "LAL"
+      },
+      "date": "2025-04-25T00:00:00",
+      "predictions": {},
+      "game_id": 18422301
+    },
+    {
+      "home_team": {
+        "id": 22,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Orlando",
+        "name": "Magic",
+        "full_name": "Orlando Magic",
+        "abbreviation": "ORL"
+      },
+      "away_team": {
+        "id": 2,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "Boston",
+        "name": "Celtics",
+        "full_name": "Boston Celtics",
+        "abbreviation": "BOS"
+      },
+      "date": "2025-04-25T00:00:00",
+      "predictions": {},
+      "game_id": 18422299
+    },
+    {
+      "home_team": {
+        "id": 15,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Memphis",
+        "name": "Grizzlies",
+        "full_name": "Memphis Grizzlies",
+        "abbreviation": "MEM"
+      },
+      "away_team": {
+        "id": 21,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Oklahoma City",
+        "name": "Thunder",
+        "full_name": "Oklahoma City Thunder",
+        "abbreviation": "OKC"
+      },
+      "date": "2025-04-26T00:00:00",
+      "predictions": {},
+      "game_id": 18425264
+    },
+    {
+      "home_team": {
+        "id": 10,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Golden State",
+        "name": "Warriors",
+        "full_name": "Golden State Warriors",
+        "abbreviation": "GSW"
+      },
+      "away_team": {
+        "id": 11,
+        "conference": "West",
+        "division": "Southwest",
+        "city": "Houston",
+        "name": "Rockets",
+        "full_name": "Houston Rockets",
+        "abbreviation": "HOU"
+      },
+      "date": "2025-04-26T00:00:00",
+      "predictions": {},
+      "game_id": 18422302
+    },
+    {
+      "home_team": {
+        "id": 13,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "LA",
+        "name": "Clippers",
+        "full_name": "LA Clippers",
+        "abbreviation": "LAC"
+      },
+      "away_team": {
+        "id": 8,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Denver",
+        "name": "Nuggets",
+        "full_name": "Denver Nuggets",
+        "abbreviation": "DEN"
+      },
+      "date": "2025-04-26T00:00:00",
+      "predictions": {},
+      "game_id": 18422303
+    },
+    {
+      "home_team": {
+        "id": 16,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Miami",
+        "name": "Heat",
+        "full_name": "Miami Heat",
+        "abbreviation": "MIA"
+      },
+      "away_team": {
+        "id": 6,
+        "conference": "East",
+        "division": "Central",
+        "city": "Cleveland",
+        "name": "Cavaliers",
+        "full_name": "Cleveland Cavaliers",
+        "abbreviation": "CLE"
+      },
+      "date": "2025-04-26T00:00:00",
+      "predictions": {},
+      "game_id": 18425162
+    },
+    {
+      "home_team": {
+        "id": 18,
+        "conference": "West",
+        "division": "Northwest",
+        "city": "Minnesota",
+        "name": "Timberwolves",
+        "full_name": "Minnesota Timberwolves",
+        "abbreviation": "MIN"
+      },
+      "away_team": {
+        "id": 14,
+        "conference": "West",
+        "division": "Pacific",
+        "city": "Los Angeles",
+        "name": "Lakers",
+        "full_name": "Los Angeles Lakers",
+        "abbreviation": "LAL"
+      },
+      "date": "2025-04-27T00:00:00",
+      "predictions": {},
+      "game_id": 18422307
+    },
+    {
+      "home_team": {
+        "id": 17,
+        "conference": "East",
+        "division": "Central",
+        "city": "Milwaukee",
+        "name": "Bucks",
+        "full_name": "Milwaukee Bucks",
+        "abbreviation": "MIL"
+      },
+      "away_team": {
+        "id": 12,
+        "conference": "East",
+        "division": "Central",
+        "city": "Indiana",
+        "name": "Pacers",
+        "full_name": "Indiana Pacers",
+        "abbreviation": "IND"
+      },
+      "date": "2025-04-27T00:00:00",
+      "predictions": {},
+      "game_id": 18422306
+    },
+    {
+      "home_team": {
+        "id": 9,
+        "conference": "East",
+        "division": "Central",
+        "city": "Detroit",
+        "name": "Pistons",
+        "full_name": "Detroit Pistons",
+        "abbreviation": "DET"
+      },
+      "away_team": {
+        "id": 20,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "New York",
+        "name": "Knicks",
+        "full_name": "New York Knicks",
+        "abbreviation": "NYK"
+      },
+      "date": "2025-04-27T00:00:00",
+      "predictions": {},
+      "game_id": 18422305
+    },
+    {
+      "home_team": {
+        "id": 22,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Orlando",
+        "name": "Magic",
+        "full_name": "Orlando Magic",
+        "abbreviation": "ORL"
+      },
+      "away_team": {
+        "id": 2,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "Boston",
+        "name": "Celtics",
+        "full_name": "Boston Celtics",
+        "abbreviation": "BOS"
+      },
+      "date": "2025-04-27T00:00:00",
+      "predictions": {},
+      "game_id": 18422304
+    }
+  ],
+  "player_props": [],
+  "metadata": {
+    "generation_time": "2025-04-20 21:09:39",
+    "models_used": [],
+    "model_count": 0
+  }
+}

@@ -169,6 +169,23 @@ Provides persistent storage for NBA data, model weights, and prediction results.
   - Implements object-relational mapping
   - Provides model versioning and metadata
 
+### 8. Performance Tracker
+
+Tracks prediction accuracy metrics for all prediction types.
+
+#### Key Modules:
+
+- **Performance Tracker** (`nba_algorithm/utils/performance_tracker.py`)
+  - Tracks prediction accuracy metrics for all prediction types
+  - Records predictions and compares against actual game outcomes
+  - Provides historical and recent (30-day) performance analytics
+  - Calculates accuracy percentages by prediction category
+  - Implements type-specific correctness logic for different bet types
+  - Manages persistent storage of prediction history and metrics
+  - Supports filtering by game ID or prediction type
+  - Maintains data consistency through pandas DataFrame operations
+  - Automatically updates metrics when new outcomes become available
+
 ## Data Flow
 
 ### Training Flow

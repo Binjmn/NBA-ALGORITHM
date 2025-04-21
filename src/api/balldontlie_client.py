@@ -390,7 +390,7 @@ class BallDontLieClient(BaseAPIClient):
         """
         params = {'game_id': game_id}
         # Never use cache for live data to ensure maximum accuracy
-        return self.request('box_scores/live', params=params, use_cache=False, force_refresh=True)
+        return self.request('box_scores/live', params=params, use_cache=False)
     
     def get_standings(self, season: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -711,8 +711,9 @@ class BallDontLieClient(BaseAPIClient):
         Returns:
             Dict[str, Any]: Current season information
         """
-        return self.request('season', force_refresh=True)
-    
+        # Remove the force_refresh parameter which causes errors
+        return self.request('season')
+
     def get_draft_data(self, 
                       year: Optional[int] = None,
                       round_num: Optional[int] = None,

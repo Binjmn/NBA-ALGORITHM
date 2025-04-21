@@ -1,0 +1,22 @@
+{
+  "games": [
+    {
+      "home_team": {
+        "id": 2,
+        "conference": "East",
+        "division": "Atlantic",
+        "city": "Boston",
+        "name": "Celtics",
+        "full_name": "Boston Celtics",
+        "abbreviation": "BOS"
+      },
+      "away_team": {
+        "id": 22,
+        "conference": "East",
+        "division": "Southeast",
+        "city": "Orlando",
+        "name": "Magic",
+        "full_name": "Orlando Magic",
+        "abbreviation": "ORL"
+      },
+      "date": 

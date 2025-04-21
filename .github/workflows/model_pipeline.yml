@@ -77,9 +77,9 @@ jobs:
     
     - name: Run model training pipeline
       env:
-        # Using proper GitHub Actions secrets syntax with explicit type conversion
-        BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY || '' }}
-        THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY || '' }}
+        # Using expressions for GitHub Actions secrets
+        BALLDONTLIE_API_KEY: "${{ secrets.BALLDONTLIE_API_KEY }}"
+        THE_ODDS_API_KEY: "${{ secrets.THE_ODDS_API_KEY }}"
       run: |
         # Verify environment variables are available
         echo "Checking API key configuration before running training pipeline"

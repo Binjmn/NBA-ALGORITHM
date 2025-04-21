@@ -51,6 +51,35 @@ class BallDontLieClientAdapter:
             The requested attribute from the source client
         """
         return getattr(self._source_client, name)
+    
+    def request(self, endpoint: str, method: str = 'GET', params: Optional[Dict] = None, data: Optional[Dict] = None, 
+                use_cache: bool = True, force_refresh: bool = False, **kwargs) -> Dict:
+        """
+        Make a request to the API, safely handling parameters that may not be supported
+        
+        This wrapper ensures compatibility with code that might pass the 'force_refresh' parameter,
+        which isn't supported by the underlying client.
+        
+        Args:
+            endpoint: API endpoint to request
+            method: HTTP method (GET, POST, etc.)
+            params: Query parameters for the request
+            data: Request body data
+            use_cache: Whether to use cached responses
+            force_refresh: Parameter that will be safely ignored
+            **kwargs: Additional keyword arguments
+            
+        Returns:
+            API response data
+        """
+        # Filter out parameters not supported by the source client
+        filtered_params = params.copy() if params else {}
+        if 'force_refresh' in filtered_params:
+            logger.debug(f"Removing 'force_refresh' parameter from request to {endpoint}")
+            del filtered_params['force_refresh']
+            
+        # Forward the request to the source client
+        return self._source_client.request(endpoint, method=method, params=filtered_params, data=data, **kwargs)
 
 class TheOddsClientAdapter:
     """

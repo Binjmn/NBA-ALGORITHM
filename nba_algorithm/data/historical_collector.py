@@ -634,6 +634,13 @@ def fetch_historical_games(days: int = 90, fetch_full_season: bool = True, seaso
             logger.error(f"Failed to initialize BallDontLie API client: {str(e)}")
             raise ValueError("Missing or invalid API key for BallDontLie API")
         
+        # Create a wrapper function to safely make API requests without the force_refresh parameter
+        def safe_request(endpoint, params=None):
+            # Remove force_refresh if it's in params
+            if params and 'force_refresh' in params:
+                del params['force_refresh']
+            return client.request(endpoint, params=params)
+        
         # Determine date range based on mode
         end_date = datetime.now()
         
@@ -656,7 +663,7 @@ def fetch_historical_games(days: int = 90, fetch_full_season: bool = True, seaso
         
         # Verify data availability for this season
         try:
-            games_for_season = client.request(
+            games_for_season = safe_request(
                 "games", 
                 params={"seasons[]": season_year, "per_page": 1}
             )
@@ -697,12 +704,16 @@ def fetch_historical_games(days: int = 90, fetch_full_season: bool = True, seaso
             try:
                 logger.debug(f"Fetching page {page} of historical games")
                 
-                # Make API request with proper error handling
-                response = client.get_games(
-                    start_date=start_date_str,
-                    end_date=end_date_str,
-                    page=page,
-                    per_page=per_page
+                # Make API request with proper error handling - use our own safe_request
+                # instead of directly calling client methods to avoid force_refresh parameter issues
+                response = safe_request(
+                    "games",
+                    params={
+                        "start_date": start_date_str,
+                        "end_date": end_date_str,
+                        "page": page,
+                        "per_page": per_page
+                    }
                 )
                 
                 # Process response

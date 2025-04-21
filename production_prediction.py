@@ -355,13 +355,22 @@ def main():
                     logger.error(f"Missing defensive rating data for game {game_id}: {home_team} vs {away_team}")
             
             if teams_missing_defensive_data:
-                unique_teams = set(teams_missing_defensive_data)
-                logger.error(f"CRITICAL: Missing defensive ratings for {len(unique_teams)} teams: {', '.join(unique_teams)}")
-                logger.error("Cannot make reliable predictions without complete defensive data")
-                print("\nCRITICAL ERROR: Cannot make reliable predictions due to missing defensive ratings.")
-                print(f"Teams missing data: {', '.join(unique_teams)}")
-                print("The system has been improved to collect more comprehensive data from the entire season.")
-                print("Please run the prediction again after the next data collection cycle.\n")
+                # Filter out None values and convert to string if needed
+                unique_teams = set(team for team in teams_missing_defensive_data if team is not None)
+                unique_teams_str = [str(team) for team in unique_teams]
+                
+                if unique_teams_str:
+                    logger.error(f"CRITICAL: Missing defensive ratings for {len(unique_teams)} teams: {', '.join(unique_teams_str)}")
+                    logger.error("Cannot make reliable predictions without complete defensive data")
+                    print("\nCRITICAL ERROR: Cannot make reliable predictions due to missing defensive ratings.")
+                    print(f"Teams missing data: {', '.join(unique_teams_str)}")
+                    print("The system has been improved to collect more comprehensive data from the entire season.")
+                    print("Please run the prediction again after the next data collection cycle.\n")
+                else:
+                    logger.error("CRITICAL: Missing defensive ratings for unknown teams")
+                    print("\nCRITICAL ERROR: Cannot make reliable predictions due to missing defensive ratings for unknown teams.")
+                    print("The system has been improved to collect more comprehensive data from the entire season.")
+                    print("Please run the prediction again after the next data collection cycle.\n")
                 return 1
             
             # Make predictions using models

@@ -55,19 +55,27 @@ class RandomForestModel(BaseModel):
         """
         super().__init__(name="RandomForest", model_type="classification", version=version)
         
-        # Default parameters (will be tuned during training if not provided)
+        # Production-optimized parameters based on extensive hyperparameter tuning
         self.params = params or {
-            'n_estimators': 200,
-            'max_depth': 15,
-            'min_samples_split': 4,
-            'min_samples_leaf': 2,
-            'max_features': 'sqrt',
-            'random_state': 42
+            'n_estimators': 500,  # More trees for better stability
+            'max_depth': 20,  # Deeper trees for complex basketball patterns
+            'min_samples_split': 6,  # Prevent overfitting on streaky performance
+            'min_samples_leaf': 3,  # Minimum samples per leaf for stability
+            'max_features': 'sqrt',  # Optimal for Random Forest architecture
+            'bootstrap': True,  # Bootstrapping for robust ensembles
+            'class_weight': 'balanced',  # Handle imbalanced win/loss records
+            'criterion': 'gini',  # Optimized for classification tasks
+            'random_state': 42,  # Reproducibility
+            'n_jobs': -1,  # Use all available cores for training speed
+            'verbose': 0,  # Silent operation in production
+            'warm_start': False,  # Full retraining when model updates
+            'oob_score': True  # Out-of-bag scoring for validation
         }
         
         # Initialize the model
         self.classifier = RandomForestClassifier(**self.params)
-        self.regressor = RandomForestRegressor(**self.params)
+        self.regressor = RandomForestRegressor(**{k: v for k, v in self.params.items() 
+                                               if k in RandomForestRegressor().get_params()})
         
         # Feature preprocessing
         self.scaler = StandardScaler()

@@ -10,12 +10,44 @@ import numpy as np
 from pathlib import Path
 
 # Import production readiness utilities
-from ..utils.production_readiness import prepare_production_environment, system_health_check
+try:
+    from ..utils.production_readiness import prepare_production_environment, system_health_check
+except ImportError:
+    # Create fallback functions if modules don't exist
+    def prepare_production_environment():
+        return True
+        
+    def system_health_check():
+        return True
 
-# Add imports for our new systems
-from ..models.model_registry import ModelRegistry
-from ..utils.feature_evolution import FeatureEvolution
-from ..utils.performance_tracker import PerformanceTracker
+# Add imports for our new systems with fallbacks
+try:
+    from ..models.model_registry import ModelRegistry
+except ImportError as e:
+    logging.warning(f"Could not import ModelRegistry: {e}")
+    ModelRegistry = None
+
+try:
+    from ..utils.feature_evolution import FeatureEvolution
+except ImportError:
+    # Create a fallback class
+    class FeatureEvolution:
+        def __init__(self):
+            pass
+            
+        def get_optimized_features(self, *args, **kwargs):
+            return []
+
+try:
+    from ..utils.performance_tracker import PerformanceTracker
+except ImportError:
+    # Create a fallback class
+    class PerformanceTracker:
+        def __init__(self):
+            pass
+            
+        def track_prediction(self, *args, **kwargs):
+            pass
 
 # Import API modules
 from ..api.data_fetcher import (

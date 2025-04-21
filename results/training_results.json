@@ -71,10 +71,10 @@
     "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
   },
   "timing": {
-    "start_time": "2025-04-20T19:52:03.025049",
-    "end_time": "2025-04-20T19:59:46.491041",
-    "total_time_seconds": 463.46599197387695,
-    "total_time_formatted": "0h 7m 43s"
+    "start_time": "2025-04-20T23:05:46.430758",
+    "end_time": "2025-04-20T23:13:29.201689",
+    "total_time_seconds": 462.77093029022217,
+    "total_time_formatted": "0h 7m 42s"
   },
   "metrics": {
     "data_collection": {
@@ -83,7 +83,7 @@
       "teams_collected": 0,
       "api_requests": 1,
       "api_errors": 0,
-      "processing_time": 3.5223474502563477
+      "processing_time": 3.9316372871398926
     },
     "feature_engineering": {
       "features_created": 400,
@@ -94,7 +94,7 @@
       "processing_time": 0
     },
     "pipeline": {
-      "total_time_seconds": 463.46599197387695,
+      "total_time_seconds": 462.77093029022217,
       "models_trained": 63,
       "game_outcome_models_trained": 21,
       "player_props_models_trained": 42,

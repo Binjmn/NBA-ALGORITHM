@@ -62,7 +62,6 @@ nba_algorithm/          # Main package directory
 │   ├── settings.py     # Settings management
 │   ├── season_manager.py # Season detection and management
 │   ├── logger.py       # Logging utilities
-│   ├── performance_tracker.py # Model performance tracking
 │   └── feature_evolution.py # Feature discovery and optimization
 └── scheduler/          # Scheduling module
     ├── __init__.py
@@ -229,7 +228,15 @@ Manages model versioning, tracks model lineage, and provides a centralized regis
 ### Performance Tracking
 
 #### performance_tracker.py
-Tracks and analyzes model performance over time, maintaining historical records of prediction accuracy. Detects underperforming models and provides metrics for model improvement.
+A production-ready performance tracking module that measures prediction accuracy over time:
+- Tracks and stores predictions for all prediction types (moneyline, spread, total, player props)
+- Compares predictions against actual game outcomes to calculate accuracy metrics
+- Provides both historical and recent performance analytics (last 30 days by default)
+- Saves prediction history and metrics to disk for long-term analysis
+- Supports filtering performance data by game ID or prediction type
+- Implements sophisticated logic for determining correctness based on prediction type
+- Handles edge cases and manages data consistency through pandas DataFrame operations
+- Automatically updates performance metrics when new game outcomes become available
 
 ## Advanced Systems
 

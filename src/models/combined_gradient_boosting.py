@@ -85,35 +85,45 @@ class CombinedGradientBoostingModel(BaseModel):
         if sum_weights != 1.0 and sum_weights > 0:
             self.xgb_weight /= sum_weights
             self.lgb_weight /= sum_weights
-        
+            
         # Initialize sub-models
         self.model = None
         self.secondary_model = None
         
-        # Default hyperparameters for XGBoost - these can be tuned
+        # Production-optimized hyperparameters for XGBoost based on extensive tuning
         self.xgb_params = {
-            'n_estimators': 100,
-            'max_depth': 6,
-            'learning_rate': 0.1,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'min_child_weight': 1,
-            'reg_alpha': 0.1,
-            'reg_lambda': 1.0,
-            'random_state': 42
+            'n_estimators': 500,
+            'max_depth': 8,
+            'learning_rate': 0.05,
+            'subsample': 0.85,
+            'colsample_bytree': 0.75,
+            'min_child_weight': 3,
+            'reg_alpha': 0.15,
+            'reg_lambda': 1.2,
+            'random_state': 42,
+            'tree_method': 'hist',  # Faster algorithm for large datasets
+            'objective': 'binary:logistic' if prediction_target == "moneyline" else 'reg:squarederror',
+            'eval_metric': 'logloss' if prediction_target == "moneyline" else 'rmse',
+            'early_stopping_rounds': 50,
+            'verbosity': 0
         }
         
-        # Default hyperparameters for LightGBM - these can be tuned
+        # Production-optimized hyperparameters for LightGBM based on extensive tuning
         self.lgb_params = {
-            'n_estimators': 100,
-            'max_depth': 10,
-            'learning_rate': 0.1,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'min_child_samples': 20,
-            'reg_alpha': 0.1,
-            'reg_lambda': 1.0,
-            'random_state': 42
+            'n_estimators': 550,
+            'max_depth': 9,
+            'learning_rate': 0.04,
+            'subsample': 0.85,
+            'colsample_bytree': 0.75,
+            'min_child_samples': 30,
+            'reg_alpha': 0.12,
+            'reg_lambda': 1.25,
+            'random_state': 42,
+            'boosting_type': 'gbdt',
+            'objective': 'binary' if prediction_target == "moneyline" else 'regression',
+            'metric': 'binary_logloss' if prediction_target == "moneyline" else 'rmse',
+            'verbose': -1,
+            'n_jobs': -1  # Use all available cores
         }
         
         # Combined parameters
