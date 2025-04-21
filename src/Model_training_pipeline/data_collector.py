@@ -65,17 +65,17 @@ class DataCollector:
         self.season = config.get('season', datetime.now().year)
         
         # Get API configuration
-        api_config = config.get('data_collection', {}).get('api', {})
+        api_config = config.get('data_collection', {}).get('api', {}) 
+        # Update the base URL to the correct endpoint
         self.base_url = api_config.get('base_url', 'https://api.balldontlie.io/v1')
         self.timeout = api_config.get('timeout', 10)
-        self.api_key = api_config.get('key', os.environ.get('BALLDONTLIE_API_KEY', ''))
-        self.odds_api_key = api_config.get('odds_key', os.environ.get('THE_ODDS_API_KEY', ''))
+        # Prioritize environment variable over config file
+        self.api_key = os.environ.get('BALLDONTLIE_API_KEY') or api_config.get('key', '')
+        self.odds_api_key = os.environ.get('THE_ODDS_API_KEY') or api_config.get('odds_key', '')
         
         # Create BallDontLie client - it uses the API key from environment variables
         from src.api.balldontlie_client import BallDontLieClient
-        # Set the API key in environment if provided in config
-        if self.api_key:
-            os.environ['BALLDONTLIE_API_KEY'] = self.api_key
+        # No need to set environment variable if it's already there
         self.balldontlie_client = BallDontLieClient()
         
         # Collection settings
@@ -489,15 +489,18 @@ class DataCollector:
 
     def _make_api_request(self, url: str, params: Dict[str, Any] = None, api_type: str = 'balldontlie') -> Dict[str, Any]:
         """
-        Make API request with rate limiting and retry logic
+        Make an API request with retry logic and rate limiting
         
         Args:
             url: API endpoint URL
-            params: Query parameters
-            api_type: API provider name for rate limiting
+            params: Optional query parameters
+            api_type: Type of API ('balldontlie' or 'odds')
             
         Returns:
-            API response dictionary
+            JSON response data
+            
+        Raises:
+            Exception if request fails after retries
         """
         retry_count = self.config['data_collection'].get('retry_count', 3)
         retry_delay = self.config['data_collection'].get('retry_delay', 2.0)
@@ -510,27 +513,35 @@ class DataCollector:
                 if wait_time > 0:
                     logger.info(f"Rate limit applied for {api_type} API. Waited {wait_time:.2f} seconds")
                 
-                # Get API key if available
-                api_key = self.api_key if api_type == 'balldontlie' else self.odds_api_key
+                # Get API key based on API type - prioritize environment variables
+                if api_type == 'balldontlie':
+                    api_key = os.environ.get('BALLDONTLIE_API_KEY') or self.api_key
+                elif api_type == 'odds':
+                    api_key = os.environ.get('THE_ODDS_API_KEY') or self.odds_api_key
+                else:
+                    api_key = ''
                 
                 # Debug the API key (mask for security)
                 if api_key:
-                    masked_key = api_key[:6] + '...' + api_key[-4:] if len(api_key) > 10 else '****'
-                    logger.info(f"Using API key (masked): {masked_key}")
+                    masked_key = api_key[:4] + '...' + api_key[-4:] if len(api_key) > 10 else '****'
+                    logger.info(f"Using API key for {api_type} (masked): {masked_key}")
                 else:
-                    logger.warning("No API key found for request")
+                    logger.warning(f"No API key found for {api_type} API. This request will likely fail.")
+                    if api_type == 'balldontlie':
+                        logger.error(f"BALLDONTLIE_API_KEY environment variable is not set properly.")
+                        # Raise an exception instead of continuing with a known-to-fail request
+                        raise ValueError("Missing required BallDontLie API key. Please set the BALLDONTLIE_API_KEY environment variable.")
                 
                 # Set up request parameters based on API type
                 headers = {}
                 params = params if params else {}
                 
                 if api_type == 'balldontlie':
-                    # BallDontLie API uses the raw API key in the Authorization header
-                    # This is the format that we've verified works
+                    # BallDontLie API requires the API key in the Authorization header
+                    # According to their latest documentation, they don't use the Bearer prefix
                     if api_key:
-                        # Simply set the Authorization header to the API key value
                         headers['Authorization'] = api_key
-                        logger.info(f"Using Authorization header with API key for BallDontLie")
+                        logger.info(f"Using Authorization header for BallDontLie API")
                 elif api_type == 'odds':
                     # The Odds API expects the key as a query parameter
                     if api_key:
@@ -541,7 +552,7 @@ class DataCollector:
                         headers['Authorization'] = f'Bearer {api_key}'
                 
                 # Make the request
-                logger.info(f"Making API request to: {url.split('?')[0]}")
+                logger.info(f"Making API request to: {url}")
                 response = requests.get(url, headers=headers, params=params, timeout=timeout)
                 
                 # Log response status
@@ -569,7 +580,7 @@ class DataCollector:
                     raise
             except Exception as e:
                 self.metrics['api_errors'] += 1
-                logger.error(f"Unexpected error in API request: {str(e)}")
+                logger.error(f"Error making API request to {url}: {str(e)}")
                 logger.error(traceback.format_exc())
                 raise
 

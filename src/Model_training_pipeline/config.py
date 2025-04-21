@@ -99,9 +99,9 @@ def get_default_config(config_path: Optional[str] = None, config: Optional[Dict[
             'num_seasons': 4,
             'min_games_required': 100,
             'api': {
-                'base_url': 'https://www.balldontlie.io/api/v1',
+                'base_url': 'https://api.balldontlie.io/v1',
                 'timeout': 10,
-                'key': os.environ.get('NBA_API_KEY', '')
+                'key': os.environ.get('BALLDONTLIE_API_KEY', '')
             },
             'retry_count': 3,
             'retry_delay': 2.0,

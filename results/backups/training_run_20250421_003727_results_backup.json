@@ -1,0 +1,195 @@
+{
+  "models_trained": [
+    "game_home_win_random_forest",
+    "game_home_win_gradient_boosting",
+    "game_spread_diff_random_forest",
+    "game_spread_diff_gradient_boosting",
+    "game_total_points_random_forest",
+    "game_total_points_gradient_boosting",
+    "player_player_points_random_forest",
+    "player_player_points_gradient_boosting",
+    "player_player_rebounds_random_forest",
+    "player_player_rebounds_gradient_boosting",
+    "player_player_assists_random_forest",
+    "player_player_assists_gradient_boosting",
+    "player_player_threes_random_forest",
+    "player_player_threes_gradient_boosting",
+    "player_player_steals_random_forest",
+    "player_player_steals_gradient_boosting",
+    "player_player_blocks_random_forest",
+    "player_player_blocks_gradient_boosting"
+  ],
+  "start_time": "2025-04-21T00:30:50.677408",
+  "metrics": {},
+  "config": {},
+  "feature_importance": {},
+  "models_details": {},
+  "game_outcome_models": 6,
+  "player_props_results": {
+    "status": "success",
+    "models_trained": [
+      "player_player_points_random_forest",
+      "player_player_points_gradient_boosting",
+      "player_player_rebounds_random_forest",
+      "player_player_rebounds_gradient_boosting",
+      "player_player_assists_random_forest",
+      "player_player_assists_gradient_boosting",
+      "player_player_threes_random_forest",
+      "player_player_threes_gradient_boosting",
+      "player_player_steals_random_forest",
+      "player_player_steals_gradient_boosting",
+      "player_player_blocks_random_forest",
+      "player_player_blocks_gradient_boosting"
+    ],
+    "metrics": {
+      "player_data_collected": 13092,
+      "player_features_created": 50,
+      "player_models_trained": 12,
+      "errors": 0
+    },
+    "evaluation": {
+      "player_points": {
+        "player_player_points_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_random_forest_20250421_003721.pkl",
+          "training_time": 0.8078515529632568,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 1.6938375309941796,
+            "r2": 0.9595778784000295
+          }
+        },
+        "player_player_points_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_points_gradient_boosting_20250421_003722.pkl",
+          "training_time": 0.2980525493621826,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 1.5579626090401935,
+            "r2": 0.9658028697794506
+          }
+        }
+      },
+      "player_rebounds": {
+        "player_player_rebounds_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_random_forest_20250421_003723.pkl",
+          "training_time": 0.9044890403747559,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 2.283284756045568,
+            "r2": 0.545614245294487
+          }
+        },
+        "player_player_rebounds_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_rebounds_gradient_boosting_20250421_003723.pkl",
+          "training_time": 0.3002135753631592,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 2.131494379219914,
+            "r2": 0.604020286918081
+          }
+        }
+      },
+      "player_assists": {
+        "player_player_assists_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_random_forest_20250421_003724.pkl",
+          "training_time": 0.8801109790802002,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 1.7608094713969036,
+            "r2": 0.4027881209069112
+          }
+        },
+        "player_player_assists_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_assists_gradient_boosting_20250421_003724.pkl",
+          "training_time": 0.29932618141174316,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 1.6517024931205107,
+            "r2": 0.4745064920321024
+          }
+        }
+      },
+      "player_threes": {
+        "player_player_threes_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_random_forest_20250421_003725.pkl",
+          "training_time": 0.2091655731201172,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.022512988911321127,
+            "r2": 0.9996769813952555
+          }
+        },
+        "player_player_threes_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_threes_gradient_boosting_20250421_003725.pkl",
+          "training_time": 0.2775759696960449,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.01956243828404859,
+            "r2": 0.9997561025882636
+          }
+        }
+      },
+      "player_steals": {
+        "player_player_steals_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_random_forest_20250421_003726.pkl",
+          "training_time": 0.8413169384002686,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.7789023981656418,
+            "r2": 0.09399299369527958
+          }
+        },
+        "player_player_steals_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_steals_gradient_boosting_20250421_003726.pkl",
+          "training_time": 0.302762508392334,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.7121523025498327,
+            "r2": 0.24262452169329463
+          }
+        }
+      },
+      "player_blocks": {
+        "player_player_blocks_random_forest": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_random_forest_20250421_003727.pkl",
+          "training_time": 0.8064906597137451,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.6733589363645758,
+            "r2": -0.012317506617427698
+          }
+        },
+        "player_player_blocks_gradient_boosting": {
+          "model_path": "C:\\Users\\bcada\\CascadeProjects\\NBA ALGORITHM\\results\\models\\player_player_blocks_gradient_boosting_20250421_003727.pkl",
+          "training_time": 0.2992575168609619,
+          "training_time_formatted": "0h 0m 0s",
+          "metrics": {
+            "rmse": 0.612518527295245,
+            "r2": 0.1623512390381212
+          }
+        }
+      }
+    }
+  },
+  "evaluation": {
+    "timestamp": "2025-04-21T00:37:27.945506",
+    "models_evaluated": 0,
+    "successful_evaluations": 0,
+    "evaluation_errors": 0,
+    "model_results": {},
+    "best_models": {}
+  },
+  "status": "success",
+  "training_details": {
+    "feature_count": 0,
+    "total_samples": 400,
+    "system_info": {
+      "python_version": "3.13.1",
+      "platform": "Windows-11-10.0.22631-SP0",
+      "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+    }
+  },
+  "end_time": "2025-04-21T00:37:27.945847",
+  "run_id": "training_run_20250421_003727",
+  "duration_seconds": 397.268439,
+  "duration_formatted": "0:06:37.268439"
+}
